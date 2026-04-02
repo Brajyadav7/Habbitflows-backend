@@ -1,0 +1,15 @@
+{
+  "name": "HabitFlows",
+  "short_name": "HabitFlows",
+  "description": "Build habits, track streaks, compete with friends",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080810",
+  "theme_color": "#c8ff00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {"src": "/static/habits/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ],
+  "screenshots": [],
+  "categories": ["health", "lifestyle", "productivity"]
+}

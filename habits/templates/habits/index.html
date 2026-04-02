@@ -1,0 +1,2271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HabitFlows</title>
+<link rel="icon" type="image/svg+xml" href="/static/habits/favicon.svg">
+<link rel="icon" type="image/x-icon" href="/static/habits/favicon.svg">
+<link rel="apple-touch-icon" href="/static/habits/favicon.svg">
+<link rel="manifest" href="/static/habits/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HabitFlows">
+<meta name="theme-color" content="#c8ff00">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#080810;--bg2:#0d0d18;--surface:#111120;--surface2:#181828;--surface3:#1e1e32;--border:#252538;--border2:#2e2e48;--text:#f0f0fa;--text2:#a0a0c0;--muted:#555570;--lime:#c8ff00;--lime2:#a8d800;--lime-glow:rgba(200,255,0,.15);--lg2:rgba(200,255,0,.08);--sidebar-w:260px;--r:16px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:clip;cursor:none}
+#cursor{width:10px;height:10px;background:var(--lime);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s;mix-blend-mode:difference}
+#cursor-ring{width:36px;height:36px;border:1.5px solid rgba(200,255,0,.5);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .2s,height .2s,border-color .2s}
+body.clicking #cursor{width:6px;height:6px}
+body.hovering #cursor{width:16px;height:16px}
+body.hovering #cursor-ring{width:52px;height:52px;border-color:var(--lime)}
+#bgCanvas{position:fixed;inset:0;z-index:0;opacity:.35;pointer-events:none}
+.shell{display:flex;min-height:100vh;position:relative;z-index:1}
+.sidebar{width:var(--sidebar-w);background:rgba(17,17,32,.92);backdrop-filter:blur(30px);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.sidebar-logo{padding:28px 24px 22px;border-bottom:1px solid var(--border)}
+.logo-mark{display:flex;align-items:center;gap:10px;transition:opacity .15s}
+.logo-mark:hover{opacity:.8}
+.logo-icon{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.logo-text{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px}
+.logo-text span{color:var(--lime)}
+.sidebar-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:.5px;text-transform:uppercase}
+.sidebar-nav{flex:1;padding:18px 12px;overflow-y:auto;position:relative;z-index:1;pointer-events:auto}
+.nav-section-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;padding:0 12px;margin-bottom:6px;margin-top:18px}
+.nav-section-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text2);font-size:14px;font-weight:500;border:1px solid transparent;margin-bottom:2px;position:relative;overflow:hidden;pointer-events:auto;-webkit-tap-highlight-color:rgba(200,255,0,.1);}
+.nav-item::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,255,0,.05),transparent);opacity:0;transition:opacity .2s}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item:hover::before{opacity:1}
+.nav-item.active{color:var(--bg);background:var(--lime);font-weight:700}
+.nav-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:rgba(200,255,0,.15);color:var(--lime);font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:99px}
+.nav-item.active .nav-badge{background:rgba(0,0,0,.2);color:var(--bg)}
+.sidebar-footer{padding:14px 12px 20px;border-top:1px solid var(--border);position:relative;z-index:1;pointer-events:auto}
+.add-btn{width:100%;padding:13px 16px;background:var(--lime);border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;letter-spacing:.3px}
+.add-btn:hover{background:#d4ff1a;box-shadow:0 4px 20px var(--lime-glow);transform:translateY(-1px)}
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;padding-bottom:80px;min-width:0;overflow-x:hidden}
+.pg-hd{padding:36px 40px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.pg-title{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;letter-spacing:-1.5px;line-height:1.1}
+.pg-title em{color:var(--lime);font-style:normal}
+.pg-sub{color:var(--text2);font-size:14px;margin-top:6px;font-weight:300}
+.page{display:none;animation:fadeUp .35s ease forwards}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.today-wrap{padding:26px 40px}
+.streak-hero{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border2);border-radius:20px;padding:28px 32px;display:flex;align-items:center;gap:32px;margin-bottom:20px;position:relative;overflow:hidden}
+.streak-hero::after{content:'';position:absolute;top:-80px;right:-80px;width:240px;height:240px;background:radial-gradient(circle,rgba(200,255,0,.12) 0%,transparent 65%);pointer-events:none}
+.streak-ring{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;background:conic-gradient(var(--lime) var(--prog,0%),var(--surface3) 0%)}
+.sri{position:absolute;inset:6px;background:var(--surface);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.snum{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--lime);line-height:1}
+.slbl{font-size:8px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;margin-top:2px;text-transform:uppercase}
+.streak-info h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px}
+.streak-info p{color:var(--text2);font-size:14px;margin-top:4px}
+.sstats{display:flex;gap:28px;margin-top:14px}
+.ss-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--lime)}
+.ss-lbl{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace}
+.prog-section{margin-bottom:20px}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.prog-top span{font-size:13px;color:var(--text2)}
+.prog-pct{font-family:'DM Mono',monospace;font-size:13px;color:var(--lime)}
+.prog-bar{height:3px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:var(--lime);transition:width .6s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(200,255,0,.4)}
+.cat-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.cat-pill{padding:6px 14px;border-radius:99px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.cat-pill:hover{border-color:var(--lime);color:var(--lime)}
+.cat-pill.active{background:var(--lime);color:var(--bg);border-color:var(--lime);font-weight:700}
+.habits-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.habit-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.habit-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--hc,var(--lime));transform:scaleX(0);transform-origin:left;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.habit-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.habit-card:hover::after{transform:scaleX(1)}
+.habit-card.done{border-color:var(--hc,var(--lime))}
+.habit-card.done::after{transform:scaleX(1)}
+.habit-card.done .hck{background:var(--hc,var(--lime));border-color:var(--hc,var(--lime))}
+.habit-card.done .hck::after{opacity:1;transform:scale(1) rotate(0deg)}
+.hcard-top{display:flex;align-items:center;gap:12px}
+.hcard-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hcard-meta{flex:1;min-width:0}
+.hcard-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hcard-cat{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;letter-spacing:.3px;text-transform:uppercase}
+.hck{width:26px;height:26px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;transition:all .2s cubic-bezier(.34,1.56,.64,1);position:relative}
+.hck::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--bg);opacity:0;transform:scale(.4) rotate(-30deg);transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.hcard-bot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hstreak{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.hstreak strong{color:var(--hc,var(--lime));font-weight:500}
+.hminibar{flex:1;height:3px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.hminibar-fill{height:100%;background:var(--hc,var(--lime));border-radius:99px;opacity:.5}
+.htotal{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+/* Target progress bar on habit card */
+.target-bar-wrap{padding:0 2px}
+.target-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.target-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:4px}
+.target-label .ticon{font-size:10px}
+.target-count{font-family:'DM Mono',monospace;font-size:10px}
+.target-track{height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.target-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.target-days-left{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px;text-align:right}
+.target-complete-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(200,255,0,.12);border:1px solid rgba(200,255,0,.3);color:var(--lime);font-size:10px;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:99px;margin-top:2px}
+.target-expired-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#f87171;font-size:10px;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:99px;margin-top:2px}
+/* Matrix */
+.matrix-wrap{padding:26px 40px}
+.mx-ctrl{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.mnav{display:flex;align-items:center;gap:10px}
+.mnbtn{width:34px;height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.mnbtn:hover{border-color:var(--lime);color:var(--lime)}
+.mnlabel{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;min-width:180px;text-align:center;letter-spacing:-.5px}
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.kpi:hover{border-color:var(--border2);transform:translateY(-2px)}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--kc,var(--lime));transform:scaleX(0);transform-origin:left;transition:transform .4s}
+.kpi:hover::after{transform:scaleX(1)}
+.kpi-lbl{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px}
+.kpi-val{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--kc,var(--lime));line-height:1.1;margin:8px 0 4px;letter-spacing:-1px}
+.kpi-sub{font-size:12px;color:var(--muted)}
+.kpi-sbar{height:3px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-top:14px}
+.kpi-sfill{height:100%;background:var(--kc,var(--lime));border-radius:99px;transition:width 1.2s cubic-bezier(.4,0,.2,1);width:0}
+.chart-row{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:22px}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px}
+.chart-box h4{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:18px}
+.chart-inner{position:relative;height:200px}
+.radial-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-height:270px;overflow-y:auto}
+.radial-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+.radial-wrap{position:relative;width:70px;height:70px}
+.radial-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:600}
+.radial-name{font-size:10px;color:var(--text2);text-align:center;max-width:75px;line-height:1.4;font-family:'DM Mono',monospace}
+.mx-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.mxth{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.mxth h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.wtabs{display:flex;gap:4px;flex-wrap:wrap}
+.wtab{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s}
+.wtab.active{background:var(--lime);color:var(--bg);border-color:var(--lime);font-weight:700}
+.mx-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.mxtbl{width:max-content;min-width:100%;border-collapse:collapse}
+table.mxtbl th{padding:10px 8px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.3px}
+table.mxtbl th.hcol{text-align:left;min-width:180px;padding-left:24px}
+table.mxtbl th.today-th{color:var(--lime)}
+table.mxtbl td{padding:7px 8px;border-bottom:1px solid rgba(37,37,56,.4);text-align:center;vertical-align:middle}
+table.mxtbl tr:last-child td{border-bottom:none}
+table.mxtbl td.hncell{text-align:left;padding-left:24px}
+.hmini{display:flex;align-items:center;gap:10px}
+.hmini-ico{font-size:15px}
+.hmini-n{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+.hmini-c{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.3px}
+.xcell{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center}
+.xcell:hover:not(.future){border-color:var(--lime);transform:scale(1.2);box-shadow:0 0 8px var(--lime-glow)}
+.xcell.done{border-color:transparent}
+.xcell.done::after{content:'✓';color:var(--bg);font-size:13px;font-weight:800}
+.xcell.future{opacity:.2;pointer-events:none}
+.xcell.today-c{box-shadow:0 0 0 2px var(--lime)}
+@keyframes xpop{0%{transform:scale(.3)}70%{transform:scale(1.3)}100%{transform:scale(1)}}
+.xcell.popping{animation:xpop .25s cubic-bezier(.34,1.56,.64,1)}
+.mbar-wrap{display:flex;align-items:center;gap:8px;min-width:100px}
+.mbar{flex:1;height:4px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.mbar-fill{height:100%;border-radius:99px;transition:width .5s}
+.mpct{font-family:'DM Mono',monospace;font-size:11px;min-width:32px;text-align:right}
+.dayfoot td{background:var(--surface2);font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:8px 8px}
+.dayfoot td.hcol{padding-left:24px;color:var(--muted);font-size:11px}
+/* Heatmap */
+.heatmap-wrap{padding:26px 40px}
+.hfilter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.hpill{padding:7px 16px;border-radius:99px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.hpill.active{color:#000;border-color:transparent;font-weight:700}
+.hcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;margin-bottom:14px}
+.hcard-hd{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.hcard-hd .bigico{font-size:30px}
+.hcard-hd h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.hcard-hd p{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.hstats{display:flex;gap:22px;margin-left:auto}
+.hstat .hval{font-family:'DM Mono',monospace;font-size:24px;font-weight:500}
+.hstat .hlbl{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px}
+/* Target progress in heatmap card */
+.htarget-block{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.htarget-ring{position:relative;width:52px;height:52px;flex-shrink:0}
+.htarget-ring svg{transform:rotate(-90deg)}
+.htarget-ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;font-weight:600}
+.htarget-info{flex:1;min-width:0}
+.htarget-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:4px}
+.htarget-sub{font-size:11px;color:var(--text2)}
+.htarget-pills{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.htarget-pill{font-family:'DM Mono',monospace;font-size:9px;padding:3px 10px;border-radius:99px;border:1px solid var(--border2);color:var(--muted)}
+.htarget-pill.ok{border-color:rgba(200,255,0,.3);color:var(--lime);background:rgba(200,255,0,.06)}
+.htarget-pill.warn{border-color:rgba(251,191,36,.3);color:#fbbf24;background:rgba(251,191,36,.06)}
+.htarget-pill.done{border-color:rgba(52,211,153,.3);color:#34d399;background:rgba(52,211,153,.06)}
+.htarget-pill.bad{border-color:rgba(248,113,113,.3);color:#f87171;background:rgba(248,113,113,.06)}
+.hgrid-wrap{overflow-x:auto}
+.hmonths{display:flex;margin-bottom:5px;padding-left:26px}
+.hmonlbl{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;min-width:28px;letter-spacing:.3px}
+.hbody{display:flex}
+.hdaylabels{display:flex;flex-direction:column;gap:3px;margin-right:6px}
+.hdaylbl{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;height:14px;line-height:14px;width:18px}
+.hweeks{display:flex;gap:3px}
+.hweek{display:flex;flex-direction:column;gap:3px}
+.hcell{width:13px;height:13px;border-radius:3px;background:var(--surface3);transition:transform .1s;position:relative}
+.hcell:hover{transform:scale(1.5);z-index:2}
+.hcell[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:130%;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-size:10px;white-space:nowrap;padding:4px 8px;border-radius:6px;z-index:10;font-family:'DM Mono',monospace;pointer-events:none}
+.hlegend{display:flex;align-items:center;gap:5px;margin-top:14px;justify-content:flex-end;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+.hlcell{width:13px;height:13px;border-radius:3px}
+/* Manage */
+.manage-wrap{padding:26px 40px}
+.manage-list{display:flex;flex-direction:column;gap:8px}
+.manage-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;transition:border-color .2s,transform .15s}
+.manage-item:hover{border-color:var(--border2);transform:translateX(3px)}
+.mitem-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.mitem-info{flex:1}
+.mitem-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.mitem-cat{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+.mitem-target{display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(200,255,0,.25);color:var(--lime);background:rgba(200,255,0,.06);margin-top:5px}
+.mitem-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mitem-actions{display:flex;gap:8px}
+.bedit{padding:7px 14px;border-radius:8px;background:rgba(200,255,0,.08);border:1px solid rgba(200,255,0,.2);color:var(--lime);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.bedit:hover{background:rgba(200,255,0,.15)}
+.bdel{padding:7px 14px;border-radius:8px;background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.2);color:#ff6060;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.bdel:hover{background:rgba(255,80,80,.15)}
+/* Badges page */
+.badges-wrap{padding:26px 40px}
+.badges-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+.bsumm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;text-align:center}
+.bsumm-val{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--lime);letter-spacing:-1px}
+.bsumm-lbl{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+.badge-section-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;margin-top:28px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.badge-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;transition:all .2s;position:relative;overflow:hidden}
+.badge-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,255,0,.04),transparent);opacity:0;transition:opacity .2s}
+.badge-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.badge-card:hover::before{opacity:1}
+.badge-card.locked{opacity:.4;filter:grayscale(.6)}
+.badge-card.locked:hover{transform:none;box-shadow:none}
+.badge-emoji{font-size:32px;line-height:1}
+.badge-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:800}
+.badge-desc{font-size:11px;color:var(--text2);line-height:1.5}
+.badge-habit{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.badge-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:auto;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.badge-date .bdate-lbl{color:var(--lime)}
+.badge-extra{font-family:'DM Mono',monospace;font-size:9px;background:rgba(200,255,0,.08);color:var(--lime);padding:2px 8px;border-radius:6px;border:1px solid rgba(200,255,0,.15);width:fit-content}
+.all-defs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:14px}
+.def-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;opacity:.55;transition:opacity .2s}
+.def-card.earned{opacity:1;border-color:rgba(200,255,0,.2)}
+.def-card:hover{opacity:1}
+.def-emoji{font-size:22px;flex-shrink:0}
+.def-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+.def-desc{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(14px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;-webkit-overflow-scrolling:touch}
+.overlay.open{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:32px;width:460px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(14px) scale(.97);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.overlay.open .modal-box{transform:translateY(0) scale(1)}
+.modal-box h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:22px;letter-spacing:-.5px}
+.fgroup{margin-bottom:16px}
+.fgroup label{display:block;font-size:10px;color:var(--muted);margin-bottom:7px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px}
+.fgroup input,.fgroup select{width:100%;background:var(--bg2);border:1px solid var(--border2);color:var(--text);border-radius:10px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+.fgroup input:focus,.fgroup select:focus{border-color:var(--lime)}
+.fgroup select option{background:var(--surface2)}
+.fgroup-hint{font-size:11px;color:var(--muted);margin-top:6px;font-family:'DM Mono',monospace}
+.target-toggle{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.tgl-track{width:38px;height:22px;background:var(--surface3);border-radius:11px;position:relative;cursor:pointer;transition:background .2s;border:1px solid var(--border2);flex-shrink:0}
+.tgl-track.on{background:var(--lime)}
+.tgl-thumb{width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s}
+.tgl-track.on .tgl-thumb{transform:translateX(16px)}
+.tgl-label{font-size:13px;color:var(--text2);cursor:pointer}
+.tgl-track.on+.tgl-label{color:var(--lime)}
+.target-input-area{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:16px}
+.target-input-area.hidden{display:none}
+.cpicker{display:flex;gap:8px;flex-wrap:wrap}
+.cpick{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.cpick.sel{border-color:var(--text);transform:scale(1.2);box-shadow:0 0 8px rgba(255,255,255,.2)}
+.modal-actions{display:flex;gap:10px;margin-top:22px}
+.mbtn{flex:1;padding:13px;border-radius:10px;border:none;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.mbtn-p{background:var(--lime);color:var(--bg)}
+.mbtn-p:hover{background:#d4ff1a;box-shadow:0 4px 16px var(--lime-glow);transform:translateY(-1px)}
+.mbtn-s{background:var(--surface3);color:var(--text2)}
+.mbtn-s:hover{color:var(--text)}
+.confirm-box{background:var(--surface);border:1px solid rgba(255,80,80,.3);border-radius:20px;padding:32px;width:360px;text-align:center;transform:scale(.95);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.overlay.open .confirm-box{transform:scale(1)}
+.confirm-ico{font-size:40px;margin-bottom:14px}
+.confirm-box h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px}
+.confirm-box p{color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:24px}
+.confirm-actions{display:flex;gap:10px}
+.mbtn-danger{flex:1;padding:13px;border-radius:10px;background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.3);color:#ff6060;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.mbtn-danger:hover{background:rgba(255,80,80,.22)}
+/* Badge earned popup */
+.badge-popup{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-120px);background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid rgba(200,255,0,.4);border-radius:20px;padding:20px 28px;z-index:700;display:flex;align-items:center;gap:16px;box-shadow:0 24px 64px rgba(0,0,0,.7),0 0 40px rgba(200,255,0,.15);transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .4s;opacity:0;min-width:320px;max-width:480px}
+.badge-popup.show{transform:translateX(-50%) translateY(0);opacity:1}
+.bp-emoji{font-size:38px;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(200,255,0,.4))}
+.bp-content{}
+.bp-title{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.bp-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--lime);letter-spacing:-.3px}
+.bp-desc{font-size:12px;color:var(--text2);margin-top:3px}
+.bp-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1}
+/* Toast */
+.toast-stack{position:fixed;bottom:28px;right:28px;z-index:600;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:13px 20px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;transform:translateX(120%);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);min-width:240px}
+.toast.show{transform:translateX(0);opacity:1}
+.tdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hamburger{display:none;position:fixed;top:16px;left:16px;z-index:200;width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border2);align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:5px}
+.hamburger span{width:18px;height:2px;background:var(--text);border-radius:2px;transition:all .2s}
+.sb-backdrop{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);pointer-events:none}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+::selection{background:var(--lime);color:var(--bg)}
+/* User profile card at bottom of sidebar */
+.user-card{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);margin-bottom:10px;position:relative}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--bg);flex-shrink:0;overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-info{flex:1;min-width:0}
+.user-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.logout-btn{width:28px;height:28px;border-radius:8px;background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.15);color:#ff6060;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;font-size:13px;text-decoration:none}
+.logout-btn:hover{background:rgba(255,80,80,.18);border-color:rgba(255,80,80,.4)}
+/* Verified toast */
+.verified-toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);color:#6ee7b7;border-radius:12px;padding:12px 22px;font-size:13px;font-weight:600;z-index:800;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .4s;opacity:0;white-space:nowrap}
+.verified-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+.invite-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#f97316;color:#fff;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;margin-left:auto;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+/* Profile/Security page */
+.sec-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.sec-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:16px}
+.sec-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-family:'DM Mono',monospace;font-size:9px;margin-left:8px}
+.sec-badge.set{background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.25);color:#34d399}
+.sec-badge.notset{background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.25);color:#f97316}
+
+/* ── Chat ─────────────────────────────────────────────────────────── */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 160px);max-height:700px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+.chat-input-bar{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2)}
+.chat-input-bar input{flex:1;background:var(--surface3);border:1.5px solid var(--border2);color:var(--text);border-radius:10px;padding:10px 14px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif}
+.chat-input-bar input:focus{border-color:var(--lime)}
+.chat-send-btn{padding:10px 20px;background:var(--lime);border:none;border-radius:10px;color:var(--bg);font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.chat-bubble{display:flex;gap:9px;align-items:flex-end}
+.chat-bubble.me{flex-direction:row-reverse}
+.chat-av{width:30px;height:30px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;overflow:hidden}
+.chat-av img{width:100%;height:100%;object-fit:cover}
+.chat-content{max-width:70%}
+.chat-name{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);margin-bottom:3px}
+.chat-bubble.me .chat-name{text-align:right}
+.chat-text{background:var(--surface2);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:9px 13px;font-size:13px;line-height:1.5;word-break:break-word}
+.chat-bubble.me .chat-text{background:var(--lime-dim);border-color:rgba(200,255,0,.2);border-radius:14px 14px 4px 14px;color:var(--text)}
+.chat-ts{font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);margin-top:3px;text-align:right}
+/* DM layout */
+.dm-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 160px);max-height:700px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.dm-sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2)}
+.dm-main{display:flex;flex-direction:column;overflow:hidden}
+.dm-header{padding:14px 16px;border-bottom:1px solid var(--border);min-height:56px;display:flex;align-items:center;gap:10px}
+.dm-friend-item{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.dm-friend-item:hover,.dm-friend-item.active{background:var(--surface3)}
+.dm-friend-av{width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--bg);flex-shrink:0;overflow:hidden}
+.dm-friend-av img{width:100%;height:100%;object-fit:cover}
+.dm-unread-dot{width:8px;height:8px;border-radius:50%;background:#f97316;margin-left:auto;flex-shrink:0}
+@media(max-width:900px){
+  .dm-layout{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .dm-sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:140px;overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:row}
+  .dm-friend-item{flex-direction:column;gap:4px;padding:10px 12px;min-width:70px;border-bottom:none;border-right:1px solid var(--border);font-size:10px;text-align:center}
+  .dm-friend-av{width:38px;height:38px}
+  .dm-friend-item .dm-friend-name{font-size:9px;font-family:'DM Mono',monospace;color:var(--text2)}
+  .dm-unread-dot{position:absolute;top:6px;right:6px}
+  .dm-friend-item{position:relative}
+  .chat-wrap{height:calc(100vh - 200px);border-radius:12px}
+  .chat-content{max-width:85%}
+}
+
+
+/* ── Pricing ─────────────────────────────────────────── */
+.plan-price span{font-size:14px;color:var(--muted);font-weight:400;letter-spacing:0}
+.plan-features li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.plan-features li::before{content:'✓';color:var(--lime);font-weight:700;flex-shrink:0}
+.plan-features li.no::before{content:'✗';color:var(--muted)}
+.plan-features li.no{color:var(--muted)}
+/* Free limit banner */
+@media(max-width:640px){}
+
+@media(max-width:900px){footer[style*="margin-left:var(--sidebar-w)"]{margin-left:0 !important;padding-bottom:80px}}
+/* ─── MOBILE RESPONSIVE@media(max-width:900px){footer[style*="margin-left:var(--sidebar-w)"]{margin-left:0 !important;padding-bottom:80px}}
+/* ─── MOBILE RESPONSIVE ──────────────────────────────────────────── */
+@media(max-width:900px){
+  /* Sidebar: slide in/out */
+  .sidebar{transform:translateX(-110%);z-index:600 !important;backdrop-filter:none;-webkit-backdrop-filter:none;background:#0d0d1f;pointer-events:none}
+  .sidebar.open{transform:translateX(0);pointer-events:auto}
+  .sb-backdrop.open{display:block;z-index:490;pointer-events:auto;left:var(--sidebar-w)}
+
+  /* Main area fills full width */
+  .main{margin-left:0;padding-bottom:90px}
+
+  /* Show hamburger */
+  .hamburger{display:flex;z-index:400;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation}
+
+  /* Content padding — include ALL page wrappers */
+  .pg-hd,.today-wrap,.matrix-wrap,.heatmap-wrap,
+  .manage-wrap,.badges-wrap,.sec-card,
+  #page-quests>*:not(.pg-hd),
+  #page-insights>*:not(.pg-hd),
+  #page-challenges>*:not(.pg-hd){
+    padding-left:16px;padding-right:16px}
+  .pg-hd{padding-top:72px !important;padding-left:16px;padding-right:16px}
+
+  /* Grid simplification */
+  .kpi-strip{grid-template-columns:1fr 1fr}
+  .chart-row{grid-template-columns:1fr}
+  .habits-grid{grid-template-columns:1fr}
+  .badges-summary{grid-template-columns:1fr 1fr}
+
+  /* Kill custom cursor */
+  body{cursor:auto !important}
+  #cursor,#cursor-ring{display:none !important}
+
+  /* Bigger tap targets throughout */
+  .nav-item{
+    padding:14px 14px;
+    min-height:52px;
+    -webkit-tap-highlight-color:rgba(200,255,0,.1);
+    touch-action:manipulation;
+    position:relative;
+    z-index:2;
+    pointer-events:auto;
+    cursor:pointer}
+  .add-btn,.mbtn,.mbtn-p,.mbtn-s,.mbtn-danger{
+    min-height:48px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent}
+  .habit-card{
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent}
+  .cat-pill,.hpill,.wtab{
+    min-height:40px;padding:8px 14px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent}
+  .mood-btn{
+    width:52px;height:52px;font-size:24px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent}
+  .cpick{width:34px;height:34px;touch-action:manipulation}
+  .xcell{width:32px;height:32px;touch-action:manipulation}
+  .mnbtn{width:40px;height:40px;touch-action:manipulation}
+  .bedit,.bdel{min-height:40px;padding:9px 16px;touch-action:manipulation}
+  .tgl-track{width:44px;height:26px;touch-action:manipulation}
+
+  /* Modal: full-screen-friendly */
+  .modal-box{
+    width:calc(100vw - 24px) !important;
+    max-width:100% !important;
+    padding:22px 18px !important;
+    max-height:88vh;
+    border-radius:16px;
+    margin:0 auto}
+  .overlay{align-items:flex-end;padding-bottom:0}
+  .overlay .modal-box{border-radius:20px 20px 0 0}
+
+  /* Toast positioning */
+  .toast-stack{bottom:90px;right:12px;left:12px}
+  .toast{min-width:unset;width:100%}
+
+  /* New page grids → single column */
+  #page-quests > div[style*="grid-template-columns:1fr 1fr"],
+  #page-quests > div > div{max-width:100%}
+  #profileContent{grid-template-columns:1fr !important;display:flex !important;flex-direction:column !important}
+  #page-quests > div[style*="display:grid"]{
+    display:flex !important;flex-direction:column !important;gap:14px !important}
+
+  /* Insight grid */
+  .insight-grid{grid-template-columns:1fr 1fr !important}
+
+  /* Challenge cards */
+  .ch-card{padding:14px}
+  .ch-participants{flex-wrap:wrap}
+
+  /* Share preview */
+  .share-preview{max-width:100% !important}
+
+  /* Template grid → 1 col */
+  #tmplGrid{grid-template-columns:1fr !important}
+}
+
+/* Extra small phones */
+@media(max-width:400px){
+  .kpi-strip{grid-template-columns:1fr}
+  .badges-summary{grid-template-columns:1fr}
+  .insight-grid{grid-template-columns:1fr !important}
+  .pg-title{font-size:26px !important}
+}
+
+/* Bottom nav bar for mobile */
+@media(max-width:900px){
+  #bottomNav{
+    display:flex !important;
+    position:fixed;bottom:0;left:0;right:0;
+    height:64px;
+    background:rgba(13,13,24,.96);
+    backdrop-filter:blur(20px);
+    border-top:1px solid var(--border);
+    z-index:250;
+    align-items:center;
+    justify-content:space-around;
+    padding:0 4px;
+    padding-bottom:env(safe-area-inset-bottom)}
+  #bottomNav .bn-item{
+    display:flex;flex-direction:column;align-items:center;
+    gap:3px;padding:6px 10px;border-radius:10px;
+    cursor:pointer;flex:1;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    color:var(--muted);font-size:9px;font-family:'DM Mono',monospace;
+    letter-spacing:.3px;text-transform:uppercase;
+    transition:color .15s,background .15s;
+    min-height:48px;justify-content:center}
+  #bottomNav .bn-item:active{background:var(--surface2)}
+  #bottomNav .bn-item.active{color:var(--lime)}
+  #bottomNav .bn-item .bn-ico{font-size:20px;line-height:1}
+}
+
+
+/* ── Quests ── */
+.quest-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;transition:all .2s}
+.quest-card.done{opacity:.55;border-style:dashed}
+.quest-ico{font-size:22px;flex-shrink:0}
+.quest-info{flex:1}
+.quest-label{font-size:13px;font-weight:600}
+.quest-xp{font-family:'DM Mono',monospace;font-size:10px;color:var(--lime);margin-top:2px}
+.quest-check{width:24px;height:24px;border-radius:50%;background:var(--lime-dim);border:2px solid rgba(200,255,0,.3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.quest-card.done .quest-check{background:var(--lime);border-color:var(--lime);color:var(--bg)}
+/* ── Mood ── */
+.mood-btn{width:40px;height:40px;border-radius:10px;background:var(--surface2);border:2px solid var(--border);font-size:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.mood-btn:hover,.mood-btn.active{border-color:var(--lime);background:var(--lime-dim);transform:scale(1.15)}
+/* ── Insights ── */
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:10px;border-left:3px solid var(--lime)}
+.insight-text{font-size:14px;line-height:1.6}
+.insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:20px 0}
+.ig-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}
+.ig-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--lime)}
+.ig-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.day-bars{display:flex;gap:6px;align-items:flex-end;height:80px;margin:12px 0}
+.day-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.day-bar{width:100%;border-radius:4px 4px 0 0;background:var(--lime-dim);border:1px solid rgba(200,255,0,.2);transition:height .4s;min-height:4px}
+.day-bar-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted)}
+/* ── Challenges ── */
+.ch-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px;transition:border-color .2s}
+.ch-card:hover{border-color:var(--border2)}
+.ch-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ch-ico{font-size:28px}
+.ch-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800}
+.ch-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px}
+.ch-participants{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.ch-part{display:flex;align-items:center;gap:7px;padding:6px 12px;background:var(--surface2);border-radius:10px;font-size:12px}
+.ch-part.leader{background:var(--lime-dim);border:1px solid rgba(200,255,0,.2)}
+.ch-part-av{width:24px;height:24px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;overflow:hidden;flex-shrink:0}
+.ch-part-av img{width:100%;height:100%;object-fit:cover}
+.ch-actions{display:flex;gap:8px}
+.status-pill{font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:99px;margin-left:auto}
+.status-active{background:rgba(200,255,0,.1);border:1px solid rgba(200,255,0,.2);color:var(--lime)}
+.status-expired{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:#f87171}
+.status-complete{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);color:#34d399}
+/* ── Share card ── */
+.share-preview{background:linear-gradient(135deg,#080810,#111120);border:1px solid var(--border2);border-radius:16px;padding:24px;text-align:center;max-width:340px;margin:0 auto}
+</style></style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="bgCanvas"></canvas>
+{% if show_verified_toast %}<div class="verified-toast" id="verifiedToast">&#10003; Email verified — welcome to HabitFlows!</div>{% endif %}
+<div class="hamburger" id="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+<nav id="bottomNav" style="display:none">
+  <div class="bn-item active" onclick="mobileNav('today',this)"><span class="bn-ico">☀️</span>Today</div>
+  <div class="bn-item" onclick="mobileNav('challenges',this)"><span class="bn-ico">⚔️</span>Battles</div>
+  <div class="bn-item" onclick="mobileNav('globalchat',this)"><span class="bn-ico">💬</span>Chat</div>
+  <div class="bn-item" onclick="mobileNav('dmchat',this)"><span class="bn-ico">✉️</span>DMs<span id="dmBnBadge" style="display:none;background:#f97316;color:#fff;font-size:8px;padding:0 4px;border-radius:99px;margin-left:2px">0</span></div>
+  <div class="bn-item" onclick="mobileNav('quests',this)"><span class="bn-ico">⚡</span>Quests</div>
+</nav>
+<div class="sb-backdrop" id="sbBackdrop" onclick="toggleSidebar(true)"></div>
+
+<!-- Badge earned popup -->
+<div class="badge-popup" id="badgePopup">
+  <div class="bp-emoji" id="bpEmoji">🏆</div>
+  <div class="bp-content">
+    <div class="bp-title">🎉 Badge Earned!</div>
+    <div class="bp-name" id="bpName">Goal Crusher</div>
+    <div class="bp-desc" id="bpDesc">You completed a habit within its target days</div>
+  </div>
+  <button class="bp-close" onclick="closeBadgePopup()">✕</button>
+</div>
+
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <a class="logo-mark" onclick="switchPage('today', document.querySelector('.nav-item'))" style="cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:10px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+      <div class="logo-icon">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="36" height="36" rx="10" fill="#c8ff00"/>
+          <rect x="8" y="9" width="3.5" height="18" rx="1.5" fill="#080810"/>
+          <rect x="8" y="16" width="11" height="3.5" rx="1.5" fill="#080810"/>
+          <rect x="16.5" y="9" width="3.5" height="9" rx="1.5" fill="#080810"/>
+          <path d="M21 19.5 L24.5 23.5 L32 13" stroke="#080810" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div><div class="logo-text">Habit<span>Flows</span></div></div>
+    </a>
+    <div class="sidebar-date" id="sidebarDate"></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <div class="nav-item active" onclick="switchPage('today',this)"><span class="nav-ico">◎</span> Today <span class="nav-badge" id="navBadge">0%</span></div>
+    <div class="nav-item" onclick="switchPage('matrix',this)"><span class="nav-ico">⊞</span> Monthly Matrix</div>
+    <div class="nav-section-label">Analytics</div>
+    <div class="nav-item" onclick="switchPage('heatmap',this)"><span class="nav-ico">▦</span> Heatmap</div>
+    <div class="nav-item" onclick="switchPage('badges',this)"><span class="nav-ico">🏅</span> Badge History <span class="nav-badge" id="badgeNavCount">0</span></div>
+    <div class="nav-section-label">Settings</div>
+    <div class="nav-item" onclick="switchPage('manage',this)"><span class="nav-ico">≡</span> Manage Habits</div>
+    <div class="nav-section-label">Grow</div>
+    <div class="nav-item" onclick="switchPage('quests',this)"><span class="nav-ico">⚡</span> Daily Quests <span id="questBadge" style="display:none;background:var(--lime);color:var(--bg);font-size:9px;padding:1px 6px;border-radius:99px;font-family:'DM Mono',monospace;margin-left:auto">3</span></div>
+    <div class="nav-item" onclick="switchPage('insights',this)"><span class="nav-ico">🧠</span> Insights</div>
+    <div class="nav-item" onclick="switchPage('challenges',this)"><span class="nav-ico">⚔️</span> Challenges</div>
+    <div class="nav-section-label">Community</div>
+    <div class="nav-item" onclick="window.location.href='/social/'"><span class="nav-ico">🌍</span> Social & Leaderboard</div>
+    <div class="nav-item" onclick="switchPage('globalchat',this)"><span class="nav-ico">💬</span> Global Chat</div>
+    <div class="nav-item" onclick="switchPage('dmchat',this)"><span class="nav-ico">✉️</span> Friends Chat <span id="dmUnreadBadge" style="display:none;background:#f97316;color:#fff;font-size:9px;padding:1px 6px;border-radius:99px;font-family:'DM Mono',monospace;margin-left:auto">0</span></div>
+    <div class="nav-item" onclick="switchPage('profile',this)"><span class="nav-ico">⚙️</span> Profile & Security</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div id="xpBarWrap" style="padding:8px 12px 0;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span id="lvlLabel" style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--lime)">🌱 Seedling</span>
+        <span id="xpLabel" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">0 XP</span>
+      </div>
+      <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden">
+        <div id="xpFill" style="height:100%;width:0%;background:var(--lime);border-radius:2px;transition:width .5s"></div>
+      </div>
+    </div>
+    <div class="user-card">
+      <div class="user-avatar" id="sidebarAvatar">
+        {% if user.avatar_url %}<img src="{{ user.avatar_url }}" alt=""/>{% else %}{{ user.display_name|slice:":1"|upper }}{% endif %}
+      </div>
+      <div class="user-info">
+        <div class="user-name" id="sidebarName">{{ user.display_name }}</div>
+        <div class="user-email">{{ user.email }}</div>
+      </div>
+      <a href="/auth/logout/" class="logout-btn" title="Sign out">&#8594;</a>
+    </div>
+    <button style="width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--text2);font-size:11px;cursor:pointer;margin-bottom:6px;font-family:'DM Sans',sans-serif" onclick="openShareCard()">📸 Share My Streak Card</button>
+    <button class="add-btn" onclick="openAddModal()"><span>+</span> New Habit</button>
+  </div>
+</aside>
+
+<main class="main">
+  <!-- TODAY -->
+  <div class="page active" id="page-today">
+    <div class="pg-hd"><div><h1 class="pg-title" id="greetTitle">Good morning<em>.</em></h1><p class="pg-sub">Build your habits, one day at a time.</p></div></div>
+    <div class="today-wrap">
+      <div class="streak-hero">
+        <div class="streak-ring" id="streakRing"><div class="sri"><div class="snum" id="snum">0</div><div class="slbl">done</div></div></div>
+        <div class="streak-info">
+          <h2 id="smsg">Start your day</h2>
+          <p id="ssub">Check off your first habit to begin</p>
+          <div class="sstats">
+            <div><div class="ss-val" id="ssDone">0</div><div class="ss-lbl">Today</div></div>
+            <div><div class="ss-val" id="ssMonth">0</div><div class="ss-lbl">This month</div></div>
+            <div><div class="ss-val" id="ssBest">0</div><div class="ss-lbl">Best streak</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="prog-section">
+        <div class="prog-top"><span id="progTxt">0 of 0 habits complete</span><span class="prog-pct" id="progPct">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      </div>
+      <div class="cat-filter" id="catFilter"></div>
+      <div class="habits-grid" id="habitsGrid"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap" id="quickActions">
+        <button onclick="openAddModal()" style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--lime);border:none;border-radius:11px;color:var(--bg);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <span style="font-size:16px">+</span> Add Habit
+        </button>
+        <button onclick="switchPage('manage',document.querySelector('.nav-item:nth-child(5)'))" style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--surface);border:1.5px solid var(--border2);border-radius:11px;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .15s" onmouseover="this.style.borderColor='var(--lime)';this.style.color='var(--lime)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+          <span>≡</span> Manage Habits
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATRIX -->
+  <div class="page" id="page-matrix">
+    <div class="pg-hd"><div><h1 class="pg-title">Monthly<em> Matrix</em></h1><p class="pg-sub">Your full month at a glance — every habit, every day.</p></div></div>
+    <div class="matrix-wrap">
+      <div class="mx-ctrl"><div class="mnav"><button class="mnbtn" onclick="changeMonth(-1)">&#8249;</button><div class="mnlabel" id="mnLabel"></div><button class="mnbtn" onclick="changeMonth(1)">&#8250;</button></div></div>
+      <div class="kpi-strip" id="kpiStrip"></div>
+      <div class="chart-row">
+        <div class="chart-box"><h4>Daily completion rate</h4><div class="chart-inner"><canvas id="lineChart"></canvas></div></div>
+        <div class="chart-box"><h4>Per-habit progress</h4><div class="radial-grid" id="radialGrid"></div></div>
+      </div>
+      <div class="mx-table-card"><div class="mxth"><h3>Daily Grid</h3><div class="wtabs" id="wtabs"></div></div><div class="mx-scroll"><table class="mxtbl" id="mxtbl"></table></div></div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="page" id="page-heatmap">
+    <div class="pg-hd"><div><h1 class="pg-title">Activity<em> Heatmap</em></h1><p class="pg-sub">365 days of consistency — your story in pixels.</p></div></div>
+    <div class="heatmap-wrap"><div class="hfilter" id="hfilter"></div><div id="hcards"></div></div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="page" id="page-badges">
+    <div class="pg-hd"><div><h1 class="pg-title">Badge<em> History</em></h1><p class="pg-sub">Every achievement you've unlocked on your journey.</p></div></div>
+    <div class="badges-wrap">
+      <div class="badges-summary">
+        <div class="bsumm-card"><div class="bsumm-val" id="bsTotal">0</div><div class="bsumm-lbl">Badges Earned</div></div>
+        <div class="bsumm-card"><div class="bsumm-val" id="bsTargets">0</div><div class="bsumm-lbl">Targets Completed</div></div>
+        <div class="bsumm-card"><div class="bsumm-val" id="bsStreak">0</div><div class="bsumm-lbl">Best Streak</div></div>
+      </div>
+      <div id="earnedBadges"></div>
+      <div class="badge-section-title">All Badges — What can you earn?</div>
+      <div class="all-defs-grid" id="allDefsGrid"></div>
+    </div>
+  </div>
+
+  <!-- MANAGE -->
+  <div class="page" id="page-manage">
+    <div class="pg-hd"><div><h1 class="pg-title">Manage<em> Habits</em></h1><p class="pg-sub">Edit, remove, or add habits to your stack.</p></div></div>
+    <div class="manage-wrap"><div class="manage-list" id="manageList"></div></div>
+  </div>
+
+
+
+  <!-- PROFILE & SECURITY PAGE -->
+  <div class="page" id="page-profile">
+    <div class="pg-hd"><h1 class="pg-title">Profile &amp;<em> Security</em></h1><p class="pg-sub">Manage your account and set or change your password.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px" id="profileContent">
+      <div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px"><div class="spin"></div>Loading…</div>
+    </div>
+  </div>
+
+
+  <!-- GLOBAL CHAT PAGE -->
+  <div class="page" id="page-globalchat">
+    <div class="pg-hd"><h1 class="pg-title">Global<em> Chat</em></h1><p class="pg-sub">Chat with all HabitFlows users in real time.</p></div>
+    <div class="chat-wrap">
+      <div class="chat-messages" id="globalMessages"></div>
+      <div class="chat-input-bar">
+        <input id="globalChatInput" type="text" placeholder="Say something to the community…" maxlength="500" onkeydown="if(event.key==='Enter')sendGlobalMessage()"/>
+        <button onclick="sendGlobalMessage()" class="chat-send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRIENDS DM PAGE -->
+  <div class="page" id="page-dmchat">
+    <div class="pg-hd"><h1 class="pg-title">Friends<em> Chat</em></h1><p class="pg-sub">Private messages with your friends.</p></div>
+    <div class="dm-layout">
+      <div class="dm-sidebar">
+        <div style="padding:12px 14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Friends</div>
+        <div id="dmFriendList"></div>
+      </div>
+      <div class="dm-main">
+        <div class="dm-header" id="dmHeader">
+          <div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:20px">Select a friend to start chatting</div>
+        </div>
+        <div class="chat-messages" id="dmMessages" style="display:none"></div>
+        <div class="chat-input-bar" id="dmInputBar" style="display:none">
+          <input id="dmChatInput" type="text" placeholder="Message…" maxlength="500" onkeydown="if(event.key==='Enter')sendDM()"/>
+          <button onclick="sendDM()" class="chat-send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUESTS PAGE -->
+  <div class="page" id="page-quests">
+    <div class="pg-hd"><h1 class="pg-title">Daily<em> Quests</em></h1><p class="pg-sub">Complete quests to earn XP and level up.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div id="questsContent" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:12px">🧊 Streak Freezes</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:32px" id="freezeCount">0</div>
+            <div>
+              <div style="font-size:13px;font-weight:600">Freezes available</div>
+              <div style="font-size:11px;color:var(--muted)">Use to protect a streak from breaking</div>
+            </div>
+          </div>
+          <button onclick="buyFreeze()" style="padding:8px 18px;background:var(--lime-dim);border:1px solid rgba(200,255,0,.2);border-radius:9px;color:var(--lime);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Buy for 300 XP</button>
+        </div>
+      </div>
+      <div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:12px">📊 Mood Today</div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px">
+            <button onclick="logMood(1)" class="mood-btn" id="mb1" data-mood="1">😞</button>
+            <button onclick="logMood(2)" class="mood-btn" id="mb2" data-mood="2">😕</button>
+            <button onclick="logMood(3)" class="mood-btn" id="mb3" data-mood="3">😐</button>
+            <button onclick="logMood(4)" class="mood-btn" id="mb4" data-mood="4">😊</button>
+            <button onclick="logMood(5)" class="mood-btn" id="mb5" data-mood="5">🤩</button>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center" id="moodLabel">Tap to log your mood</div>
+          <input id="moodNote" placeholder="Add a note… (optional)" style="width:100%;margin-top:8px;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:8px 12px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif"/>
+          <button onclick="saveMood()" style="margin-top:8px;padding:8px 18px;background:var(--lime);border:none;border-radius:9px;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Save Mood</button>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:12px">📅 Mood This Month</div>
+          <div id="moodChart" style="display:flex;gap:2px;align-items:flex-end;height:60px"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:'DM Mono',monospace;font-size:8px;color:var(--muted)"><span>30 days ago</span><span>Today</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS PAGE -->
+  <div class="page" id="page-insights">
+    <div class="pg-hd"><h1 class="pg-title">AI<em> Insights</em></h1><p class="pg-sub">Personalized analysis of your habit patterns.</p></div>
+    <div id="insightsContent"><div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px"><div class="spin"></div>Analysing your habits…</div></div>
+  </div>
+
+  <!-- CHALLENGES PAGE -->
+  <div class="page" id="page-challenges">
+    <div class="pg-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div><h1 class="pg-title">Habit<em> Challenges</em></h1><p class="pg-sub">Compete with friends. Win XP.</p></div>
+      <button onclick="openCreateChallenge()" style="padding:10px 20px;background:var(--lime);border:none;border-radius:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--bg);cursor:pointer">+ Create Challenge</button>
+    </div>
+    <div id="challengesContent"></div>
+  </div>
+
+</main>
+</div>
+
+<!-- App Footer -->
+<footer style="background:var(--surface);border-top:1px solid var(--border);padding:18px 24px;margin-left:var(--sidebar-w);transition:margin-left .3s">
+  <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto">
+    <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text)">Habit<span style="color:var(--lime)">Flows</span></span>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <a href="/about/"   target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;font-family:'DM Mono',monospace;transition:color .15s" onmouseover="this.style.color='var(--lime)'" onmouseout="this.style.color='var(--muted)'">About Us</a>
+      <a href="/contact/" target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;font-family:'DM Mono',monospace;transition:color .15s" onmouseover="this.style.color='var(--lime)'" onmouseout="this.style.color='var(--muted)'">Contact</a>
+      <a href="/privacy/" target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;font-family:'DM Mono',monospace;transition:color .15s" onmouseover="this.style.color='var(--lime)'" onmouseout="this.style.color='var(--muted)'">Privacy Policy</a>
+      <a href="/terms/"   target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;font-family:'DM Mono',monospace;transition:color .15s" onmouseover="this.style.color='var(--lime)'" onmouseout="this.style.color='var(--muted)'">Terms</a>
+    </div>
+    <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">&copy; 2026 HabitFlows &middot; habitfloww@gmail.com</span>
+  </div>
+</footer>
+
+<!-- Add / Edit Habit Modal -->
+<div class="overlay" id="habitOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">New Habit</h3>
+    <button onclick="openTemplateLibrary()" style="width:100%;padding:9px;background:var(--surface2);border:1px dashed var(--border2);border-radius:9px;color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:12px;font-family:'DM Sans',sans-serif">📚 Browse Templates Library</button>
+    <div class="fgroup"><label>Name</label><input type="text" id="hName" placeholder="e.g. Morning Run"/></div>
+    <div class="fgroup"><label>Icon (emoji)</label><input type="text" id="hIcon" placeholder="🏃" maxlength="4"/></div>
+    <div class="fgroup"><label>Category</label>
+      <select id="hCat"><option>Mindfulness</option><option>Fitness</option><option>Learning</option><option>Health</option><option>Revision</option><option>Reflection</option><option>Productivity</option><option>Social</option><option>Other</option></select>
+    </div>
+    <div class="fgroup"><label>Color</label><div class="cpicker" id="cpicker"></div></div>
+    <!-- Target days toggle -->
+    <div class="target-toggle">
+      <div class="tgl-track" id="targetToggle" onclick="toggleTargetInput()"><div class="tgl-thumb"></div></div>
+      <span class="tgl-label" onclick="toggleTargetInput()">Set a day target for this habit</span>
+    </div>
+    <div class="target-input-area hidden" id="targetInputArea">
+      <div class="fgroup" style="margin-bottom:8px">
+        <label>Target Days</label>
+        <input type="number" id="hTargetDays" placeholder="e.g. 60" min="1" max="365"/>
+      </div>
+      <div class="fgroup-hint">Complete this habit <strong id="targetPreview">—</strong> days in a row to achieve your goal and earn a badge.</div>
+    </div>
+    <!-- Privacy toggle -->
+    <div class="target-toggle" style="margin-bottom:14px">
+      <div class="tgl-track" id="publicToggle" onclick="this.classList.toggle('on')"><div class="tgl-thumb"></div></div>
+      <span class="tgl-label" onclick="document.getElementById('publicToggle').classList.toggle('on')">Public habit (visible on your profile &amp; activity feed)</span>
+    </div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('habitOverlay')">Cancel</button>
+      <button class="mbtn mbtn-p" id="mSaveBtn" onclick="saveHabit()">Add Habit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-ico">🗑️</div>
+    <h3>Delete Habit?</h3>
+    <p id="confirmMsg">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="mbtn mbtn-s" style="flex:1;padding:13px;border-radius:10px;border:none;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;background:var(--surface3);color:var(--text2)" onclick="closeOverlay('confirmOverlay')">Cancel</button>
+      <button class="mbtn-danger" id="confirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+const COLORS=['#c8ff00','#34d399','#60a5fa','#f87171','#fb923c','#e879f9','#38bdf8','#a78bfa','#fbbf24','#fb7185','#4ade80','#f0abfc'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let allHabits=[],allLogs={},allStats={},todayDone=[],allBadges=[],badgeDefs=[];
+let selColor=COLORS[0],editingId=null,pendingDeleteId=null;
+let matrixY,matrixM,activeWeek=0,lineChartI=null;
+const radCharts={};
+let selHid=null,selCat='All';
+const nowDate=new Date();
+matrixY=nowDate.getFullYear();matrixM=nowDate.getMonth();
+
+/* background particles */
+(function(){const c=document.getElementById('bgCanvas'),ctx=c.getContext('2d');let pts=[];function resize(){c.width=innerWidth;c.height=innerHeight;}resize();window.addEventListener('resize',resize);for(let i=0;i<55;i++)pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.4+.4});(function draw(){ctx.clearRect(0,0,c.width,c.height);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>c.width)p.vx*=-1;if(p.y<0||p.y>c.height)p.vy*=-1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba(200,255,0,.25)';ctx.fill();});for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<110){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(200,255,0,${(1-d/110)*.07})`;ctx.stroke();}}requestAnimationFrame(draw);})();})();
+
+/* cursor — desktop only */
+(function(){
+  const isTouchDevice=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  if(isTouchDevice)return; // skip entirely on touch devices
+  const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+  (function anim(){rx+=(mx-rx)*.1;ry+=(my-ry)*.1;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(anim);})();
+  document.addEventListener('mousedown',()=>document.body.classList.add('clicking'));
+  document.addEventListener('mouseup',()=>document.body.classList.remove('clicking'));
+  document.addEventListener('mouseover',e=>{
+    if(e.target.matches('button,a,.nav-item,.habit-card,.xcell,.hcell,.cpick,.cat-pill,.hpill,.wtab,.mnbtn,.bedit,.bdel,.add-btn,.tgl-track'))
+      document.body.classList.add('hovering');
+    else document.body.classList.remove('hovering');
+  });
+})();
+
+/* init */
+document.getElementById('sidebarDate').textContent=nowDate.toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric',year:'numeric'}).toUpperCase();
+const h=nowDate.getHours();
+document.getElementById('greetTitle').innerHTML=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+'<em>.</em>';
+
+/* color picker */
+const cp=document.getElementById('cpicker');
+COLORS.forEach((c,i)=>{const d=document.createElement('div');d.className='cpick'+(i===0?' sel':'');d.style.background=c;d.onclick=()=>{selColor=c;document.querySelectorAll('.cpick').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');};cp.appendChild(d);});
+
+/* target days input preview */
+document.getElementById('hTargetDays').addEventListener('input',function(){
+  const v=parseInt(this.value);
+  document.getElementById('targetPreview').textContent=v>0?v:'—';
+});
+
+function toggleTargetInput(){
+  const tgl=document.getElementById('targetToggle'),area=document.getElementById('targetInputArea');
+  tgl.classList.toggle('on');area.classList.toggle('hidden');
+  if(!tgl.classList.contains('on'))document.getElementById('hTargetDays').value='';
+}
+
+async function loadAll(){
+  [allHabits,allLogs,allStats,todayDone,allBadges,badgeDefs]=await Promise.all([
+    fetch('/api/habits').then(r=>r.json()),
+    fetch('/api/logs').then(r=>r.json()),
+    fetch('/api/stats').then(r=>r.json()),
+    fetch('/api/today').then(r=>r.json()),
+    fetch('/api/badges').then(r=>r.json()),
+    fetch('/api/badge-definitions').then(r=>r.json()),
+  ]);
+  renderToday();
+  updateBadgeNav();
+}
+
+function updateBadgeNav(){
+  document.getElementById('badgeNavCount').textContent=allBadges.length;
+}
+
+function switchPage(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(el)el.classList.add('active');
+  if(page==='matrix')renderMatrix();
+  if(page==='heatmap')renderHeatmap();
+  if(page==='manage')renderManage();
+  if(page==='badges')renderBadges();
+  if(window.innerWidth<900)toggleSidebar(true);
+}
+function toggleSidebar(forceClose){
+  const sb  = document.getElementById('sidebar');
+  const bd  = document.getElementById('sbBackdrop');
+  const open = sb.classList.contains('open');
+  if(forceClose || open){
+    sb.classList.remove('open');
+    bd.classList.remove('open');
+    bd.style.pointerEvents  = 'none';
+    sb.style.pointerEvents  = 'none';
+  } else {
+    sb.classList.add('open');
+    bd.classList.add('open');
+    bd.style.pointerEvents  = 'auto';
+    sb.style.pointerEvents  = 'auto';
+    // Force all nav items to be tappable
+    sb.querySelectorAll('.nav-item, button, a').forEach(el => {
+      el.style.pointerEvents = 'auto';
+    });
+  }
+}
+function mobileNav(page, el){
+  // Update bottom nav active state
+  document.querySelectorAll('#bottomNav .bn-item').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  // Switch page
+  const navItem = Array.from(document.querySelectorAll('.nav-item'))
+    .find(n=>n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+page+"'"));
+  switchPage(page, navItem||el);
+  // Sync sidebar nav active state
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navItem) navItem.classList.add('active');
+}
+
+/* ── TODAY ─────────────────────────────────────────────────────────── */
+function renderToday(){
+  const cats=['All',...new Set(allHabits.map(h=>h.category))];
+  const cf=document.getElementById('catFilter');cf.innerHTML='';
+  cats.forEach(c=>{const b=document.createElement('button');b.className='cat-pill'+(selCat===c?' active':'');b.textContent=c;b.onclick=()=>{selCat=c;renderToday();};cf.appendChild(b);});
+
+  const filtered=selCat==='All'?allHabits:allHabits.filter(h=>h.category===selCat);
+
+  const grid=document.getElementById('habitsGrid');grid.innerHTML='';
+
+  filtered.forEach((h,i)=>{
+    const done=todayDone.includes(h.id);
+    const stat=allStats[h.id]||{};
+    const weekPct=stat.total?Math.min(100,Math.round(stat.total/30*100)):0;
+    const tp=stat.target_progress;
+    const card=document.createElement('div');card.className='habit-card'+(done?' done':'');
+    card.style.setProperty('--hc',h.color);card.style.animationDelay=(i*.04)+'s';
+    let targetHtml='';
+    if(tp){
+      const pct=Math.min(100,Math.round(tp.completed/tp.target_days*100));
+      if(tp.is_complete){
+        targetHtml=`<div class="target-bar-wrap"><span class="target-complete-badge">🏆 Target Complete! ${tp.completed}/${tp.target_days} days</span></div>`;
+      } else if(tp.is_expired){
+        targetHtml=`<div class="target-bar-wrap"><span class="target-expired-badge">⏰ Target Expired — ${tp.completed}/${tp.target_days} days</span></div>`;
+      } else {
+        targetHtml=`<div class="target-bar-wrap"><div class="target-bar-top"><span class="target-label"><span class="ticon">🎯</span> ${tp.completed}/${tp.target_days} days</span><span class="target-count" style="color:${h.color}">${pct}%</span></div><div class="target-track"><div class="target-fill" style="width:${pct}%;background:${h.color}"></div></div><div class="target-days-left">${tp.days_remaining} days remaining</div></div>`;
+      }
+    }
+    card.innerHTML=`<div class="hcard-top"><div class="hcard-ico" style="background:${h.color}18">${h.icon}</div><div class="hcard-meta"><div class="hcard-name">${h.name}</div><div class="hcard-cat">${h.category}</div></div><div class="hck"></div></div>${targetHtml}<div class="hcard-bot"><div class="hstreak"><span>🔥</span><strong>${stat.streak||0}</strong>day streak</div><div class="hminibar"><div class="hminibar-fill" style="width:${weekPct}%"></div></div><div class="htotal">${stat.total||0} total</div></div>`;
+    card.onclick=()=>toggleHabit(h.id,card);
+    grid.appendChild(card);
+  });
+
+  updateHero();
+}
+
+async function toggleHabit(id,card){
+  // Instant visual feedback — no waiting
+  const isNowDone = !todayDone.includes(id);
+  if(isNowDone){ todayDone.push(id); card.classList.add('done'); }
+  else { todayDone=todayDone.filter(x=>x!==id); card.classList.remove('done'); }
+  updateHero();
+  const h2=allHabits.find(x=>x.id===id);
+  showToast(isNowDone?'✅ '+h2.name+' done!':'↩️ Unmarked', isNowDone?h2.color:'#a0a0c0');
+
+  // Background sync
+  try{
+    const r=await fetch('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({habit_id:id})});
+    const d=await r.json();
+    // Sync actual server state
+    if(d.status==='added' && !todayDone.includes(id)) todayDone.push(id);
+    if(d.status==='removed') todayDone=todayDone.filter(x=>x!==id);
+    // Update stats quietly in background
+    [allStats,allLogs,allBadges]=await Promise.all([
+      fetch('/api/stats').then(r=>r.json()),
+      fetch('/api/logs').then(r=>r.json()),
+      fetch('/api/badges').then(r=>r.json()),
+    ]);
+    renderToday();
+    if(d.new_badges&&d.new_badges.length>0){
+      updateBadgeNav();
+      let delay=300;
+      d.new_badges.forEach(b=>{setTimeout(()=>showBadgePopup(b),delay);delay+=2000;});
+    }
+  }catch(e){ /* network error — local state already updated */ }
+}
+
+function updateHero(){
+  const total=allHabits.length,done=todayDone.length,pct=total?Math.round(done/total*100):0;
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progPct').textContent=pct+'%';
+  document.getElementById('progTxt').textContent=`${done} of ${total} habits complete`;
+  document.getElementById('navBadge').textContent=pct+'%';
+  document.getElementById('ssDone').textContent=done;
+  document.getElementById('snum').textContent=done;
+  const best=Math.max(0,...Object.values(allStats).map(s=>s.streak||0));
+  document.getElementById('ssBest').textContent=best;
+  const tdDs=nowDate.toISOString().split('T')[0].substring(0,7);
+  const mDone=Object.entries(allLogs).filter(([k])=>k.startsWith(tdDs)).reduce((a,[,v])=>a+v.length,0);
+  document.getElementById('ssMonth').textContent=mDone;
+  document.getElementById('streakRing').style.setProperty('--prog',pct+'%');
+  const msgs=[[0,'Start your day','Check off your first habit to begin'],[1,'Nice start!',`${done} down, ${total-done} to go`],[Math.ceil(total*.5),'Halfway there!','Keep the momentum going'],[Math.ceil(total*.8),'Almost there!','Just a few more left'],[total,'Perfect day! 🎉','You nailed every single habit!']];
+  const msg=msgs.slice().reverse().find(([t])=>done>=t)||msgs[0];
+  document.getElementById('smsg').textContent=msg[1];
+  document.getElementById('ssub').textContent=msg[2];
+}
+
+/* ── BADGE POPUP ───────────────────────────────────────────────────── */
+let badgePopupTimer=null;
+function showBadgePopup(badge){
+  const pop=document.getElementById('badgePopup');
+  document.getElementById('bpEmoji').textContent=badge.emoji;
+  document.getElementById('bpName').textContent=badge.name;
+  document.getElementById('bpDesc').textContent=badge.description;
+  pop.classList.add('show');
+  if(badgePopupTimer)clearTimeout(badgePopupTimer);
+  badgePopupTimer=setTimeout(closeBadgePopup,4500);
+}
+function closeBadgePopup(){
+  document.getElementById('badgePopup').classList.remove('show');
+  if(badgePopupTimer)clearTimeout(badgePopupTimer);
+}
+
+/* ── MATRIX ────────────────────────────────────────────────────────── */
+function changeMonth(d){matrixM+=d;if(matrixM>11){matrixM=0;matrixY++;}if(matrixM<0){matrixM=11;matrixY--;}activeWeek=0;renderMatrix();}
+function ds(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function getDIM(y,m){return new Date(y,m+1,0).getDate();}
+
+function renderMatrix(){
+  document.getElementById('mnLabel').textContent=`${MONTHS[matrixM]} ${matrixY}`;
+  const days=getDIM(matrixY,matrixM),todayDs=nowDate.toISOString().split('T')[0];
+  const mLogs={};for(let d=1;d<=days;d++){const s=ds(matrixY,matrixM,d);mLogs[s]=allLogs[s]||[];}
+  const habits=allHabits;
+  const dpd={},dpH={};habits.forEach(h=>dpH[h.id]=0);
+  for(let d=1;d<=days;d++){const s=ds(matrixY,matrixM,d);dpd[s]=(mLogs[s]||[]).length;(mLogs[s]||[]).forEach(id=>{if(dpH[id]!==undefined)dpH[id]++;});}
+  const past=Array.from({length:days},(_,i)=>i+1).filter(d=>ds(matrixY,matrixM,d)<=todayDs);
+  const totalDone=Object.values(dpH).reduce((a,b)=>a+b,0),totalPoss=past.length*habits.length;
+  const mPct=totalPoss?Math.round(totalDone/totalPoss*100):0;
+  const perfect=past.filter(d=>dpd[ds(matrixY,matrixM,d)]===habits.length).length;
+  let bs=0,cs=0;for(let d=1;d<=days;d++){const s=ds(matrixY,matrixM,d);(mLogs[s]||[]).length>0?(cs++,bs=Math.max(bs,cs)):cs=0;}
+  renderKPIs(mPct,totalDone,perfect,bs,past.length);
+  renderLineChart(days,dpd,todayDs);
+  renderRadials(dpH,past.length);
+  renderWTabs(days);
+  renderMxTable(days,mLogs,todayDs);
+}
+
+function renderKPIs(pct,done,perfect,streak,pd){
+  const kd=[{l:'Monthly Progress',v:pct+'%',s:`${done} completions`,b:pct,c:'#c8ff00'},{l:'Perfect Days',v:perfect,s:`of ${pd} days`,b:Math.round(perfect/Math.max(pd,1)*100),c:'#34d399'},{l:'Best Streak',v:streak+'d',s:'consecutive',b:Math.min(100,streak/30*100),c:'#60a5fa'},{l:'Habits Tracked',v:allHabits.length,s:'active',b:100,c:'#f87171'}];
+  document.getElementById('kpiStrip').innerHTML=kd.map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.s}</div><div class="kpi-sbar"><div class="kpi-sfill" data-w="${k.b}"></div></div></div>`).join('');
+  setTimeout(()=>document.querySelectorAll('.kpi-sfill').forEach(el=>el.style.width=el.dataset.w+'%'),80);
+}
+
+function renderLineChart(days,dpd,todayDs){
+  if(lineChartI){lineChartI.destroy();lineChartI=null;}
+  const labels=[],data=[];
+  for(let d=1;d<=days;d++){const s=ds(matrixY,matrixM,d);labels.push(d);data.push(allHabits.length&&s<=todayDs?Math.round((dpd[s]||0)/allHabits.length*100):null);}
+  const ctx=document.getElementById('lineChart').getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(200,255,0,.3)');g.addColorStop(1,'rgba(200,255,0,.02)');
+  lineChartI=new Chart(ctx,{type:'line',data:{labels,datasets:[{data,fill:true,backgroundColor:g,borderColor:'#c8ff00',borderWidth:2.5,pointBackgroundColor:'#c8ff00',pointRadius:3,pointHoverRadius:7,tension:.4,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#111120',borderColor:'#252538',borderWidth:1,titleColor:'#f0f0fa',bodyColor:'#c8ff00',callbacks:{label:c=>`${c.raw??'—'}% done`}}},scales:{x:{grid:{color:'rgba(37,37,56,.5)'},ticks:{color:'#555570',font:{family:'DM Mono',size:10}}},y:{min:0,max:100,grid:{color:'rgba(37,37,56,.5)'},ticks:{color:'#555570',font:{family:'DM Mono',size:10},callback:v=>v+'%'}}}}});
+}
+
+function renderRadials(dpH,pd){
+  const g=document.getElementById('radialGrid');Object.values(radCharts).forEach(c=>c.destroy());Object.keys(radCharts).forEach(k=>delete radCharts[k]);g.innerHTML='';
+  allHabits.slice(0,8).forEach(h=>{
+    const pct=pd?Math.round((dpH[h.id]||0)/pd*100):0,cid='rc_'+h.id.replace(/\W/g,'_');
+    const el=document.createElement('div');el.className='radial-item';
+    el.innerHTML=`<div class="radial-wrap"><canvas id="${cid}" width="70" height="70"></canvas><div class="radial-center" style="color:${h.color}">${pct}%</div></div><div class="radial-name">${h.icon} ${h.name.split(' ').slice(0,2).join(' ')}</div>`;
+    g.appendChild(el);
+    setTimeout(()=>{const c=document.getElementById(cid);if(!c)return;radCharts[h.id]=new Chart(c.getContext('2d'),{type:'doughnut',data:{datasets:[{data:[pct,100-pct],backgroundColor:[h.color,'#1e1e32'],borderWidth:0}]},options:{cutout:'74%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:800}}});},60);
+  });
+}
+
+function renderWTabs(days){
+  const wt=document.getElementById('wtabs');wt.innerHTML='';
+  const mk=(l,w)=>{const b=document.createElement('button');b.className='wtab'+(activeWeek===w?' active':'');b.textContent=l;b.onclick=()=>{activeWeek=w;wt.querySelectorAll('.wtab').forEach((x,i)=>x.classList.toggle('active',i===w));renderMxTableOnly();};wt.appendChild(b);};
+  mk('All',0);for(let w=1;w<=Math.ceil(days/7);w++)mk('W'+w,w);
+}
+
+function getVdays(days){if(!activeWeek)return Array.from({length:days},(_,i)=>i+1);const s=(activeWeek-1)*7+1,e=Math.min(activeWeek*7,days);return Array.from({length:e-s+1},(_,i)=>s+i);}
+function renderMxTableOnly(){const days=getDIM(matrixY,matrixM),mL={};for(let d=1;d<=days;d++){const s=ds(matrixY,matrixM,d);mL[s]=allLogs[s]||[];}renderMxTable(days,mL,nowDate.toISOString().split('T')[0]);}
+
+function renderMxTable(days,mLogs,todayDs){
+  const vd=getVdays(days),t=document.getElementById('mxtbl');t.innerHTML='';
+  const habits=allHabits;
+  const thead=document.createElement('thead');
+  let hr='<tr><th class="hcol">Habit</th>';
+  vd.forEach(d=>{const s=ds(matrixY,matrixM,d),dow=new Date(s).getDay(),isT=s===todayDs;hr+=`<th class="${isT?'today-th':''}"><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">${DAYS[dow]}</div><div style="font-size:13px;font-weight:800;color:${isT?'var(--lime)':'var(--text)'};font-family:'Syne',sans-serif">${d}</div></th>`;});
+  hr+='<th style="color:var(--muted);font-size:10px;font-family:\'DM Mono\',monospace">GOAL</th><th style="color:var(--muted);font-size:10px;font-family:\'DM Mono\',monospace">DONE</th><th style="color:var(--muted);font-size:10px;font-family:\'DM Mono\',monospace;min-width:110px">%</th></tr>';
+  thead.innerHTML=hr;t.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  habits.forEach(h=>{
+    const tr=document.createElement('tr');
+    let html=`<td class="hncell"><div class="hmini"><span class="hmini-ico">${h.icon}</span><div><div class="hmini-n">${h.name}</div><div class="hmini-c">${h.category}</div></div></div></td>`;
+    let dc=0;
+    vd.forEach(d=>{const s=ds(matrixY,matrixM,d),chk=(mLogs[s]||[]).includes(h.id),fut=s>todayDs,isT=s===todayDs;if(chk)dc++;html+=`<td><button class="xcell${chk?' done':''}${fut?' future':''}${isT?' today-c':''}" style="${chk?`background:${h.color}`:'background:transparent'}" onclick="toggleCell('${h.id}','${s}',this)"></button></td>`;});
+    const gd=vd.filter(d=>ds(matrixY,matrixM,d)<=todayDs).length;
+    const pct=gd?Math.round(dc/gd*100):0,pc=pct>=80?'#34d399':pct>=50?'#fbbf24':'#f87171';
+    html+=`<td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${gd}</td><td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${h.color}">${dc}</td><td><div class="mbar-wrap"><div class="mbar"><div class="mbar-fill" style="width:${pct}%;background:${pc}"></div></div><span class="mpct" style="color:${pc}">${pct}%</span></div></td>`;
+    tr.innerHTML=html;tbody.appendChild(tr);
+  });
+  const fr=document.createElement('tr');fr.className='dayfoot';
+  let fh='<td class="hcol">Daily %</td>';
+  vd.forEach(d=>{const s=ds(matrixY,matrixM,d),logs=mLogs[s]||[],pct=habits.length&&s<=todayDs?Math.round(logs.length/habits.length*100):null,col=pct===null?'var(--muted)':pct>=80?'#34d399':pct>=50?'#fbbf24':'#f87171';fh+=`<td style="color:${col}">${pct!==null?pct+'%':'—'}</td>`;});
+  fh+='<td colspan="3"></td>';fr.innerHTML=fh;tbody.appendChild(fr);t.appendChild(tbody);
+}
+
+async function toggleCell(hid,dateStr,btn){
+  const r=await fetch('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({habit_id:hid,date:dateStr})});
+  const d=await r.json();const h=allHabits.find(x=>x.id===hid);
+  if(d.status==='added'){btn.classList.add('done','popping');btn.style.background=h.color;}
+  else{btn.classList.remove('done','popping');btn.style.background='transparent';}
+  setTimeout(()=>btn.classList.remove('popping'),300);
+  allLogs=await fetch('/api/logs').then(r=>r.json());
+  allStats=await fetch('/api/stats').then(r=>r.json());
+  todayDone=await fetch('/api/today').then(r=>r.json());
+  renderMatrix();
+  showToast(d.status==='added'?'✅ Logged!':'↩️ Removed',d.status==='added'?h.color:'#a0a0c0');
+  if(d.new_badges&&d.new_badges.length>0){allBadges=await fetch('/api/badges').then(r=>r.json());updateBadgeNav();let delay=300;d.new_badges.forEach(b=>{setTimeout(()=>showBadgePopup(b),delay);delay+=2000;});}
+}
+
+/* ── HEATMAP ────────────────────────────────────────────────────────── */
+function renderHeatmap(){
+  const hf=document.getElementById('hfilter');hf.innerHTML='';
+  const mkP=(lbl,id,color)=>{const b=document.createElement('button');b.className='hpill'+(selHid===id?' active':'');if(selHid===id){b.style.background=color||'#c8ff00';b.style.color='#000';}b.textContent=lbl;b.onclick=()=>{selHid=id;renderHeatmap();};hf.appendChild(b);};
+  const habits=allHabits;
+  mkP('All Habits',null,'#c8ff00');habits.forEach(h=>mkP(h.icon+' '+h.name,h.id,h.color));
+  const cards=document.getElementById('hcards');cards.innerHTML='';
+  (selHid?habits.filter(h=>h.id===selHid):habits).forEach(h=>cards.appendChild(buildHCard(h)));
+}
+
+function buildHCard(habit){
+  const stat=allStats[habit.id]||{streak:0,total:0,heatmap:{},target_progress:null};
+  const card=document.createElement('div');card.className='hcard';
+  const tD=new Date();let start=new Date(tD);start.setDate(start.getDate()-364);start.setDate(start.getDate()-start.getDay());
+  let mls=[],cw=[],wIdx=0,lm=-1,weeks=[];
+  for(let d=new Date(start);d<=tD;d.setDate(d.getDate()+1)){
+    const s=d.toISOString().split('T')[0],m=d.getMonth();
+    if(d.getDay()===0){if(cw.length)weeks.push(cw);cw=[];wIdx++;if(m!==lm){mls.push({idx:wIdx-1,name:d.toLocaleDateString('en',{month:'short'})});lm=m;}}
+    cw.push({ds:s,done:stat.heatmap[s]===1,future:new Date(d)>tD,day:d.getDay()});
+  }
+  if(cw.length)weeks.push(cw);
+  let mhtml='<div class="hmonths">';mls.forEach((ml,i)=>{const gap=i===0?ml.idx:ml.idx-mls[i-1].idx;mhtml+=`<span class="hmonlbl" style="min-width:${gap*16}px">${ml.name}</span>`;});mhtml+='</div>';
+  const dn=['','M','','W','','F',''];
+  let whtml='<div class="hweeks">';
+  weeks.forEach(w=>{whtml+='<div class="hweek">';if(w[0].day>0)for(let i=0;i<w[0].day;i++)whtml+='<div class="hcell" style="visibility:hidden"></div>';w.forEach(c=>{whtml+=`<div class="hcell${c.done?' done':''}" style="${c.done?`background:${habit.color}`:''}${c.future?';opacity:.25':''}" data-tip="${c.ds}${c.done?' ✓':''}"></div>`;});whtml+='</div>';});whtml+='</div>';
+
+  // Target progress block
+  const tp=stat.target_progress;
+  let targetBlock='';
+  if(tp){
+    const pct=Math.min(100,Math.round(tp.completed/tp.target_days*100));
+    const r=26,circ=2*Math.PI*r,offset=circ-(pct/100)*circ;
+    const statusPill=tp.is_complete?'<span class="htarget-pill done">✅ Complete</span>':tp.is_expired?'<span class="htarget-pill bad">⏰ Expired</span>':tp.days_remaining<=7?'<span class="htarget-pill warn">⚡ '+tp.days_remaining+' days left</span>':'<span class="htarget-pill ok">🎯 On track</span>';
+    targetBlock=`<div class="htarget-block"><div class="htarget-ring"><svg width="52" height="52" viewBox="0 0 60 60"><circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--surface3)" stroke-width="5"/><circle cx="30" cy="30" r="${r}" fill="none" stroke="${habit.color}" stroke-width="5" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/></svg><div class="htarget-ring-text" style="color:${habit.color}">${pct}%</div></div><div class="htarget-info"><div class="htarget-title">🎯 ${tp.target_days}-Day Target</div><div class="htarget-sub">${tp.completed} of ${tp.target_days} days complete · Started ${tp.target_start}</div><div class="htarget-pills">${statusPill}<span class="htarget-pill">${tp.days_remaining} days left</span><span class="htarget-pill">Ends ${tp.target_end}</span></div></div></div>`;
+  }
+
+  card.innerHTML=`<div class="hcard-hd"><div class="bigico">${habit.icon}</div><div><h3>${habit.name}</h3><p>${habit.category}</p></div><div class="hstats"><div class="hstat"><div class="hval" style="color:${habit.color}">${stat.streak}</div><div class="hlbl">Streak</div></div><div class="hstat"><div class="hval" style="color:${habit.color}">${stat.total}</div><div class="hlbl">Total</div></div></div></div>${targetBlock}<div class="hgrid-wrap">${mhtml}<div class="hbody"><div class="hdaylabels">${dn.map(d=>`<div class="hdaylbl">${d}</div>`).join('')}</div>${whtml}</div><div class="hlegend">Less <div class="hlcell" style="background:var(--surface3)"></div><div class="hlcell" style="background:${habit.color}44"></div><div class="hlcell" style="background:${habit.color}88"></div><div class="hlcell" style="background:${habit.color}"></div> More</div></div>`;
+  return card;
+}
+
+/* ── BADGES ─────────────────────────────────────────────────────────── */
+function renderBadges(){
+  // Summary stats
+  const targetBadges=allBadges.filter(b=>b.badge_id==='target_complete').length;
+  const bestStreak=Math.max(0,...Object.values(allStats).map(s=>s.streak||0));
+  document.getElementById('bsTotal').textContent=allBadges.length;
+  document.getElementById('bsTargets').textContent=targetBadges;
+  document.getElementById('bsStreak').textContent=bestStreak+'d';
+
+  // Earned badges grouped
+  const earned=document.getElementById('earnedBadges');earned.innerHTML='';
+  if(allBadges.length===0){
+    earned.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:13px">No badges yet — start logging habits to earn your first! 🌱</div>';
+  } else {
+    earned.innerHTML='<div class="badge-section-title">Your Earned Badges</div>';
+    const grid=document.createElement('div');grid.className='badges-grid';
+    allBadges.forEach(b=>{
+      const card=document.createElement('div');card.className='badge-card';
+      let extraHtml='';
+      if(b.extra_data&&b.extra_data.days_saved)extraHtml=`<div class="badge-extra">⚡ ${b.extra_data.days_saved} days early</div>`;
+      else if(b.extra_data&&b.extra_data.target_days)extraHtml=`<div class="badge-extra">🎯 ${b.extra_data.target_days}-day target</div>`;
+      else if(b.extra_data&&b.extra_data.targets_completed)extraHtml=`<div class="badge-extra">🏆 ${b.extra_data.targets_completed} targets done</div>`;
+      card.innerHTML=`<div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.description}</div><div class="badge-habit"><span>${b.habit_icon}</span>${b.habit_name}</div>${extraHtml}<div class="badge-date"><span class="bdate-lbl">Earned</span>${b.earned_at}</div>`;
+      grid.appendChild(card);
+    });
+    earned.appendChild(grid);
+  }
+
+  // All badge definitions
+  const defsGrid=document.getElementById('allDefsGrid');defsGrid.innerHTML='';
+  const earnedIds=new Set(allBadges.map(b=>b.badge_id));
+  badgeDefs.forEach(def=>{
+    const el=document.createElement('div');el.className='def-card'+(earnedIds.has(def.badge_id)?' earned':'');
+    el.innerHTML=`<div class="def-emoji">${def.emoji}</div><div><div class="def-name">${def.name}</div><div class="def-desc">${def.description}</div></div>`;
+    defsGrid.appendChild(el);
+  });
+}
+
+/* ── MANAGE ─────────────────────────────────────────────────────────── */
+function renderManage(){
+  const list=document.getElementById('manageList');list.innerHTML='';
+  allHabits.forEach(h=>{
+    const item=document.createElement('div');item.className='manage-item';
+    const tp=allStats[h.id]&&allStats[h.id].target_progress;
+    let targetPill='';
+    if(h.target_days){
+      const tp2=tp;const status=tp2?tp2.is_complete?'✅ Complete':tp2.is_expired?'⏰ Expired':tp2.days_remaining+' days left':'';
+      targetPill=`<div class="mitem-target">🎯 ${h.target_days}-day target${status?' · '+status:''}</div>`;
+    }
+    item.innerHTML=`<div class="mitem-ico" style="background:${h.color}18">${h.icon}</div><div class="mitem-info"><div class="mitem-name">${h.name}</div><div class="mitem-cat">${h.category} · <span style="color:${h.color};font-family:'DM Mono',monospace;font-size:10px">${h.color}</span></div>${targetPill}</div><div class="mitem-dot" style="background:${h.color}"></div><div class="mitem-actions"><button class="bedit" onclick="openEditModal('${h.id}')">✏️ Edit</button><button class="bdel" onclick="openConfirmDelete('${h.id}','${h.name.replace(/'/g,"\\'")}')">🗑️ Delete</button></div>`;
+    list.appendChild(item);
+  });
+}
+
+/* ── MODALS ─────────────────────────────────────────────────────────── */
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modalTitle').textContent='New Habit';
+  document.getElementById('mSaveBtn').textContent='Add Habit';
+  document.getElementById('hName').value='';document.getElementById('hIcon').value='';document.getElementById('hCat').value='Mindfulness';
+  document.getElementById('hTargetDays').value='';document.getElementById('targetPreview').textContent='—';
+  const tgl=document.getElementById('targetToggle'),area=document.getElementById('targetInputArea');
+  tgl.classList.remove('on');area.classList.add('hidden');
+  const ptgl=document.getElementById('publicToggle');if(ptgl)ptgl.classList.add('on');
+  selColor=COLORS[0];document.querySelectorAll('.cpick').forEach((d,i)=>d.classList.toggle('sel',i===0));
+  document.getElementById('habitOverlay').classList.add('open');
+}
+
+function openEditModal(id){
+  const h=allHabits.find(x=>x.id===id);if(!h)return;
+  editingId=id;document.getElementById('modalTitle').textContent='Edit Habit';document.getElementById('mSaveBtn').textContent='Save Changes';
+  document.getElementById('hName').value=h.name;document.getElementById('hIcon').value=h.icon;document.getElementById('hCat').value=h.category;
+  const tgl=document.getElementById('targetToggle'),area=document.getElementById('targetInputArea');
+  if(h.target_days){
+    document.getElementById('hTargetDays').value=h.target_days;
+    document.getElementById('targetPreview').textContent=h.target_days;
+    tgl.classList.add('on');area.classList.remove('hidden');
+  } else {
+    document.getElementById('hTargetDays').value='';document.getElementById('targetPreview').textContent='—';
+    tgl.classList.remove('on');area.classList.add('hidden');
+  }
+  const ptgl2=document.getElementById('publicToggle');if(ptgl2){if(h.is_public===false)ptgl2.classList.remove('on');else ptgl2.classList.add('on');}
+  selColor=h.color;document.querySelectorAll('.cpick').forEach(d=>d.classList.toggle('sel',d.style.background===h.color||rgbHex(d.style.background)===h.color));
+  document.getElementById('habitOverlay').classList.add('open');
+}
+
+function rgbHex(rgb){const m=rgb.match(/\d+/g);if(!m||m.length<3)return rgb;return '#'+m.slice(0,3).map(x=>parseInt(x).toString(16).padStart(2,'0')).join('');}
+function closeOverlay(id){document.getElementById(id).classList.remove('open');editingId=null;}
+document.querySelectorAll('.overlay').forEach(o=>{
+  ['click','touchend'].forEach(evt=>o.addEventListener(evt,e=>{
+    if(e.target===o){e.preventDefault();o.classList.remove('open');}
+  },{passive:false}));
+});
+
+async function saveHabit(){
+  const name=document.getElementById('hName').value.trim(),icon=document.getElementById('hIcon').value.trim()||'⭐',category=document.getElementById('hCat').value;
+  if(!name)return;
+  const tgl=document.getElementById('targetToggle');
+  const targetDays=tgl.classList.contains('on')?parseInt(document.getElementById('hTargetDays').value)||null:null;
+  const isPublic=document.getElementById('publicToggle')?.classList.contains('on')!==false;
+  if(editingId){
+    await fetch('/api/habits/'+editingId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,icon,category,color:selColor,target_days:targetDays,is_public:isPublic})});
+    closeOverlay('habitOverlay');await loadAll();if(document.getElementById('page-manage').classList.contains('active'))renderManage();
+    showToast('✅ Habit updated!','#c8ff00');
+  } else {
+    await fetch('/api/habits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,icon,category,color:selColor,target_days:targetDays,is_public:isPublic})});
+    closeOverlay('habitOverlay');await loadAll();if(document.getElementById('page-manage').classList.contains('active'))renderManage();
+    showToast('🎉 Habit added!','#c8ff00');
+  }
+}
+
+function openConfirmDelete(id,name){pendingDeleteId=id;document.getElementById('confirmMsg').textContent=`Delete "${name}"? Your log history will be preserved.`;document.getElementById('confirmOverlay').classList.add('open');}
+document.getElementById('confirmBtn').onclick=async()=>{
+  if(!pendingDeleteId)return;
+  await fetch('/api/habits/'+pendingDeleteId,{method:'DELETE'});
+  closeOverlay('confirmOverlay');pendingDeleteId=null;
+  await loadAll();if(document.getElementById('page-manage').classList.contains('active'))renderManage();
+  showToast('🗑️ Habit deleted','#f87171');
+};
+
+function showToast(msg,color='#c8ff00'){
+  const stack=document.getElementById('toastStack'),t=document.createElement('div');t.className='toast';
+  const dot=document.createElement('div');dot.className='tdot';dot.style.background=color;
+  t.appendChild(dot);t.appendChild(document.createTextNode(msg));stack.appendChild(t);
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),400);},2800);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));closeBadgePopup();}
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openAddModal();}
+});
+
+// Show email verified toast if redirected from verification link
+const _vt=document.getElementById('verifiedToast');
+if(_vt){setTimeout(()=>_vt.classList.add('show'),300);setTimeout(()=>_vt.classList.remove('show'),4500);}
+
+loadAll();
+
+// ═══ XP & LEVEL ═══════════════════════════════════════════════════════════
+async function loadXP(){
+  try{
+    const d = await fetch('/api/xp').then(r=>r.json());
+    const lv = d.level;
+    const lvEl = document.getElementById('lvlLabel');
+    const xpEl = document.getElementById('xpLabel');
+    const fillEl= document.getElementById('xpFill');
+    if(lvEl){ lvEl.textContent=lv.emoji+' '+lv.name; lvEl.style.color=lv.color; }
+    if(xpEl)  xpEl.textContent=lv.xp+' XP';
+    if(fillEl){ fillEl.style.width=lv.progress+'%'; fillEl.style.background=lv.color; }
+    const fc=document.getElementById('freezeCount');
+    if(fc) fc.textContent='🧊 × '+d.freezes;
+  }catch(e){}
+}
+
+// ═══ DAILY QUESTS ══════════════════════════════════════════════════════════
+async function loadQuests(){
+  const el=document.getElementById('questsContent'); if(!el)return;
+  const data=await fetch('/api/quests').then(r=>r.json()).catch(()=>[]);
+  const pending=data.filter(q=>!q.completed).length;
+  const badge=document.getElementById('questBadge');
+  if(badge){badge.textContent=pending;badge.style.display=pending?'inline-block':'none';}
+  const icons={log_3:'📝',log_5:'🔥',log_all:'🏆',streak_any:'⚡',social:'👍'};
+  el.innerHTML=data.map(q=>`
+    <div class="quest-card ${q.completed?'done':''}">
+      <div class="quest-ico">${icons[q.type]||'🎯'}</div>
+      <div class="quest-info"><div class="quest-label">${q.label}</div><div class="quest-xp">+${q.xp_reward} XP${q.completed?' · Done ✓':''}</div></div>
+      <div class="quest-check">${q.completed?'✓':''}</div>
+    </div>`).join('');
+  loadMoodToday(); loadMoodChart(); loadXP();
+  const fc=document.getElementById('freezeCount');
+  try{const x=await fetch('/api/xp').then(r=>r.json());if(fc)fc.textContent='🧊 × '+x.freezes;}catch(e){}
+}
+
+async function loadMoodToday(){
+  try{
+    const data=await fetch('/api/mood?days=1').then(r=>r.json());
+    const today=new Date().toISOString().split('T')[0];
+    const m=data.find(x=>x.date===today);
+    if(!m)return;
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.mood)===m.mood));
+    const lbl=document.getElementById('moodLabel');if(lbl)lbl.textContent=m.label;
+    const ni=document.getElementById('moodNote');if(ni)ni.value=m.note||'';
+    window._selectedMood=m.mood;
+  }catch(e){}
+}
+window._selectedMood=0;
+function logMood(v){
+  window._selectedMood=v;
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.mood)===v));
+  const labels={1:'😞 Rough day',2:'😕 Meh',3:'😐 Okay',4:'😊 Good',5:'🤩 Amazing!'};
+  const lbl=document.getElementById('moodLabel');if(lbl)lbl.textContent=labels[v]||'';
+}
+async function saveMood(){
+  if(!window._selectedMood){showToast('Pick a mood first!','#f87171');return;}
+  const note=document.getElementById('moodNote')?.value||'';
+  await fetch('/api/mood',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mood:window._selectedMood,note,date:new Date().toISOString().split('T')[0]})});
+  showToast('Mood saved!','#c8ff00'); loadMoodChart();
+}
+async function loadMoodChart(){
+  const data=await fetch('/api/mood?days=30').then(r=>r.json()).catch(()=>[]);
+  const el=document.getElementById('moodChart');if(!el)return;
+  const colors={1:'#f87171',2:'#fb923c',3:'#fbbf24',4:'#34d399',5:'#c8ff00'};
+  const today=new Date(); let bars='';
+  for(let i=29;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    const log=data.find(m=>m.date===ds);
+    const mood=log?log.mood:0;
+    const h=mood?(mood/5*56)+'px':'4px';
+    bars+=`<div style="flex:1;border-radius:3px 3px 0 0;height:${h};background:${colors[mood]||'var(--surface3)'};min-height:4px;transition:height .3s" title="${ds}${log?': '+log.label:''}"></div>`;
+  }
+  el.innerHTML=bars;
+}
+async function buyFreeze(){
+  const d=await fetch('/api/freeze/buy',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>r.json());
+  if(d.error){showToast(d.error,'#f87171');return;}
+  showToast('🧊 Streak freeze purchased!','#60a5fa');
+  loadXP();
+  const fc=document.getElementById('freezeCount');if(fc)fc.textContent='🧊 × '+d.freezes;
+}
+
+// ═══ INSIGHTS ══════════════════════════════════════════════════════════════
+async function loadInsights(){
+  const el=document.getElementById('insightsContent');if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px"><div class="spin"></div>Analysing your habits…</div>';
+  const d=await fetch('/api/insights').then(r=>r.json()).catch(()=>null);
+  if(!d){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted);font-family:\'DM Mono\',monospace">Log some habits first to see insights!</div>';return;}
+  const insightsHTML=d.insights.map(i=>`<div class="insight-card"><div class="insight-text">${i}</div></div>`).join('');
+  const maxD=Math.max(...Object.values(d.day_counts||{}),1);
+  const dayOrder=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const dayBars=dayOrder.map(day=>{
+    const cnt=d.day_counts[day]||0;
+    const pct=Math.round(cnt/maxD*100);
+    return`<div class="day-bar-wrap"><div class="day-bar" style="height:${Math.max(6,pct*0.64)}px;background:${pct>60?'var(--lime)':'var(--surface3)'}"></div><div class="day-bar-lbl">${day.slice(0,3)}</div></div>`;
+  }).join('');
+  const corrHTML=(d.correlations||[]).map(c=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-radius:10px;font-size:12px;margin-bottom:6px">
+      <span>${c.icon1}</span><strong>${c.habit1}</strong>
+      <span style="color:var(--muted)">+</span>
+      <span>${c.icon2}</span><strong>${c.habit2}</strong>
+      <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--lime)">${c.pct}% together</span>
+    </div>`).join('');
+  el.innerHTML=`
+    <div class="insight-grid">
+      <div class="ig-card"><div class="ig-val">${d.this_week}</div><div class="ig-lbl">This week</div></div>
+      <div class="ig-card"><div class="ig-val" style="color:${d.wow_pct>=0?'var(--lime)':'#f87171'}">${d.wow_pct>=0?'+':''}${d.wow_pct}%</div><div class="ig-lbl">vs last week</div></div>
+      <div class="ig-card"><div class="ig-val">${d.best_streak}</div><div class="ig-lbl">Best streak</div></div>
+      ${d.best_habit?`<div class="ig-card"><div class="ig-val">${d.best_habit.icon}</div><div class="ig-lbl">${d.best_habit.name}</div></div>`:''}
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">💡 Your Insights</div>
+    ${insightsHTML}
+    <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:12px">📅 Completions by Day</div>
+      <div class="day-bars">${dayBars}</div>
+    </div>
+    ${corrHTML?`<div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;margin-bottom:12px">🔗 Habit Correlations</div>${corrHTML}</div>`:''}
+  `;
+}
+
+// ═══ CHALLENGES ════════════════════════════════════════════════════════════
+async function loadChallenges(){
+  const el=document.getElementById('challengesContent');if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:36px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px"><div class="spin"></div>Loading…</div>';
+  const challenges=await fetch('/api/challenges').then(r=>r.json()).catch(()=>[]);
+  if(!challenges.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'DM Mono\',monospace"><div style="font-size:36px;margin-bottom:10px">⚔️</div>No challenges yet — create the first one!</div>';return;}
+  el.innerHTML=challenges.map(ch=>{
+    const sc={active:'status-active',expired:'status-expired',complete:'status-complete'}[ch.status]||'status-active';
+    const partsHTML=ch.participants.slice(0,5).map((p,i)=>{
+      const av=p.avatar_url?`<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`:(p.display_name||'?')[0].toUpperCase();
+      return`<div class="ch-part ${i===0&&ch.participants.length>1?'leader':''}"><div class="ch-part-av">${av}</div><span style="font-size:12px;font-weight:${p.is_me?700:400}">${p.display_name.split(' ')[0]}</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lime)">${p.logs}/${ch.duration_days}</span></div>`;
+    }).join('');
+    const actionBtn=ch.im_in?(ch.status==='active'?`<button onclick="logChallenge(${ch.id})" style="padding:8px 18px;background:var(--lime);border:none;border-radius:9px;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer">✓ Log Today</button>`:'<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted)">Challenge ended</span>'):`<button onclick="joinChallenge(${ch.id})" style="padding:8px 18px;background:var(--lime-dim);border:1px solid rgba(200,255,0,.2);border-radius:9px;color:var(--lime);font-size:12px;font-weight:600;cursor:pointer">+ Join</button>`;
+    return`<div class="ch-card"><div class="ch-header"><div class="ch-ico">${ch.habit_icon}</div><div style="flex:1"><div class="ch-title">${ch.title}</div><div class="ch-meta">${ch.habit_name} · ${ch.duration_days} days · ${ch.days_left}d left · ${ch.participant_count} joined</div></div><span class="status-pill ${sc}">${ch.status}</span></div>${ch.description?`<div style="color:var(--text2);font-size:12px;margin-bottom:12px">${ch.description}</div>`:''}<div class="ch-participants">${partsHTML}</div><div class="ch-actions">${actionBtn}</div></div>`;
+  }).join('');
+}
+function openCreateChallenge(){document.getElementById('challengeOverlay').classList.add('open');}
+async function saveChallenge(){
+  const body={title:document.getElementById('chTitle').value.trim(),habit_name:document.getElementById('chHabit').value.trim(),habit_icon:document.getElementById('chIcon').value.trim()||'🎯',description:document.getElementById('chDesc').value.trim(),duration_days:parseInt(document.getElementById('chDuration').value)};
+  if(!body.title||!body.habit_name){showToast('Fill in title and habit name','#f87171');return;}
+  await fetch('/api/challenges/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  closeOverlay('challengeOverlay');showToast('⚔️ Challenge created!','#c8ff00');loadChallenges();
+}
+async function joinChallenge(id){
+  await fetch('/api/challenges/'+id+'/join',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  showToast('Joined!','#c8ff00');loadChallenges();
+}
+async function logChallenge(id){
+  const d=await fetch('/api/challenges/'+id+'/log',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>r.json());
+  if(d.completed)showToast('🏆 Challenge complete! +500 XP!','#fbbf24');
+  else showToast(d.action==='added'?'✓ Logged!':'Removed log','#c8ff00');
+  loadChallenges();loadXP();
+}
+
+// ═══ HABIT TEMPLATES ═══════════════════════════════════════════════════════
+let _tmplData=[];
+async function openTemplateLibrary(){
+  document.getElementById('templateOverlay').classList.add('open');
+  if(!_tmplData.length){
+    const d=await fetch('/api/habit-templates').then(r=>r.json());
+    _tmplData=d.templates;
+    const catEl=document.getElementById('tmplCatFilter');
+    if(catEl) catEl.innerHTML=['All',...d.categories].map(c=>`<button onclick="filterTmpl('${c}')" class="tmpl-cat-btn" style="padding:4px 11px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:10px;cursor:pointer;font-family:'DM Mono',monospace">${c}</button>`).join('');
+  }
+  renderTmpl('All');
+}
+function filterTmpl(cat){
+  document.querySelectorAll('.tmpl-cat-btn').forEach(b=>{const on=b.textContent===cat;b.style.background=on?'var(--lime)':'var(--surface2)';b.style.color=on?'var(--bg)':'var(--text2)';b.style.borderColor=on?'var(--lime)':'var(--border)';});
+  renderTmpl(cat);
+}
+function renderTmpl(cat){
+  const grid=document.getElementById('tmplGrid');if(!grid)return;
+  const list=cat==='All'?_tmplData:_tmplData.filter(t=>t.category===cat);
+  grid.innerHTML=list.map(t=>`
+    <div onclick="applyTmpl(${JSON.stringify(JSON.stringify(t))})" style="padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:9px" onmouseover="this.style.borderColor='var(--lime)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:20px">${t.icon}</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:600">${t.name}</div><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">${t.category}</div></div>
+      <div style="width:9px;height:9px;border-radius:50%;background:${t.color};flex-shrink:0"></div>
+    </div>`).join('');
+}
+function applyTmpl(jsonStr){
+  const t=JSON.parse(jsonStr);
+  document.getElementById('hName').value=t.name;
+  document.getElementById('hIcon').value=t.icon;
+  document.getElementById('hCat').value=t.category;
+  selColor=t.color;
+  document.querySelectorAll('.cpick').forEach(d=>d.classList.remove('sel'));
+  closeOverlay('templateOverlay');
+  editingId=null;
+  document.getElementById('modalTitle').textContent='New Habit';
+  document.getElementById('mSaveBtn').textContent='Add Habit';
+  document.getElementById('habitOverlay').classList.add('open');
+}
+
+// ═══ SHARE CARD ════════════════════════════════════════════════════════════
+async function openShareCard(){
+  document.getElementById('shareOverlay').classList.add('open');
+  const [statsData,badgesData,xpData]=await Promise.all([
+    fetch('/api/stats').then(r=>r.json()).catch(()=>({})),
+    fetch('/api/badges').then(r=>r.json()).catch(()=>[]),
+    fetch('/api/xp').then(r=>r.json()).catch(()=>({level:{emoji:'🌱',name:'Seedling',xp:0,color:'#c8ff00'}})),
+  ]);
+  let bestStreak=0,totalLogs=0;
+  for(const s of Object.values(statsData)){totalLogs+=s.total||0;if((s.streak||0)>bestStreak)bestStreak=s.streak;}
+  const lv=xpData.level||{emoji:'🌱',name:'Seedling',xp:0,color:'#c8ff00'};
+  document.getElementById('sharePreview').innerHTML=`
+    <div style="background:linear-gradient(135deg,#080810,#0d0d18 50%,#111120);padding:28px;border-radius:14px;text-align:center">
+      <div style="font-size:9px;font-family:'DM Mono',monospace;color:#444456;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px">HabitFlows</div>
+      <div style="font-size:36px;margin-bottom:2px">🔥</div>
+      <div style="font-size:56px;font-weight:800;color:#c8ff00;letter-spacing:-3px;line-height:1;font-family:'Syne',sans-serif">${bestStreak}</div>
+      <div style="font-size:13px;color:#a0a0c0;margin-top:4px;margin-bottom:18px">day streak</div>
+      <div style="display:flex;justify-content:center;gap:22px;margin-bottom:16px">
+        <div><div style="font-size:20px;font-weight:800;color:#c8ff00;font-family:'Syne',sans-serif">${totalLogs}</div><div style="font-size:8px;color:#555570;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Total Logs</div></div>
+        <div><div style="font-size:20px;font-weight:800;color:#c8ff00;font-family:'Syne',sans-serif">${badgesData.length}</div><div style="font-size:8px;color:#555570;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Badges</div></div>
+        <div><div style="font-size:22px;color:${lv.color}">${lv.emoji}</div><div style="font-size:8px;color:#555570;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px">${lv.name}</div></div>
+      </div>
+      <div style="font-size:9px;color:#2a2a3a;font-family:'DM Mono',monospace">habitflows.app</div>
+    </div>`;
+}
+
+// ═══ PWA SERVICE WORKER ════════════════════════════════════════════════════
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/static/habits/sw.js').catch(()=>{});
+}
+
+// ═══ PATCH switchPage for new pages ════════════════════════════════════════
+const _origSwitch=switchPage;
+switchPage=function(page,el){
+  _origSwitch(page,el);
+  if(page==='quests')     loadQuests();
+  if(page==='insights')   loadInsights();
+  if(page==='challenges') loadChallenges();
+};
+
+// ═══ EXTENDED INIT ════════════════════════════════════════════════════════
+(async()=>{
+  await loadXP();
+  try{
+    const q=await fetch('/api/quests').then(r=>r.json());
+    const n=q.filter(x=>!x.completed).length;
+    const b=document.getElementById('questBadge');
+    if(b){b.textContent=n;b.style.display=n?'inline-block':'none';}
+  }catch(e){}
+  checkPendingInvites();
+  // Poll DM unread every 15s
+  async function pollDMUnread(){
+    try{
+      const resp = await fetch('/api/chat/inbox');
+      if(!resp.ok) return;  // ignore 401/500 silently
+      const u = await resp.json();
+      const total=Object.values(u).reduce((a,b)=>a+b,0);
+      const badge=document.getElementById('dmUnreadBadge');
+      if(badge){badge.textContent=total;badge.style.display=total?'inline-block':'none';}
+    }catch(e){}
+  }
+  pollDMUnread();
+  setInterval(pollDMUnread,15000);
+})();
+
+// ═══ PATCH switchPage for new pages ════════════════════════════════════════
+const _origSwitchProfile = switchPage;
+switchPage = function(page, el){
+  _origSwitchProfile(page, el);
+  if(page==='profile')    loadProfilePage();
+  if(page==='globalchat') initGlobalChat();
+  if(page==='dmchat')     initDMChat();
+};
+
+// ═══ GLOBAL CHAT ════════════════════════════════════════════════════════════
+let _gcLastTs = 0;
+let _gcPollTimer = null;
+
+function initGlobalChat(){
+  clearInterval(_gcPollTimer);
+  loadGlobalMessages(true);
+  _gcPollTimer = setInterval(pollGlobalMessages, 3000);
+}
+
+async function loadGlobalMessages(initial){
+  const el = document.getElementById('globalMessages');
+  if(!el) return;
+  if(initial) el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px">Loading…</div>';
+  const msgs = await fetch('/api/chat/global').then(r=>r.json()).catch(()=>[]);
+  if(!msgs.length && initial){ el.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px">No messages yet. Say hi! 👋</div>'; return; }
+  if(msgs.length) _gcLastTs = msgs[msgs.length-1].ts;
+  renderChatMessages(el, msgs, '{{ user.id }}', initial);
+}
+
+async function pollGlobalMessages(){
+  if(!document.getElementById('page-globalchat')?.classList.contains('active')) return;
+  const msgs = await fetch('/api/chat/global?since='+_gcLastTs).then(r=>r.json()).catch(()=>[]);
+  if(!msgs.length) return;
+  _gcLastTs = msgs[msgs.length-1].ts;
+  const el = document.getElementById('globalMessages');
+  appendChatMessages(el, msgs, '{{ user.id }}');
+}
+
+async function sendGlobalMessage(){
+  const inp = document.getElementById('globalChatInput');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  const d = await fetch('/api/chat/global',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}).then(r=>r.json());
+  if(d.message){
+    _gcLastTs = d.message.ts;
+    const el = document.getElementById('globalMessages');
+    appendChatMessages(el, [d.message], '{{ user.id }}');
+  }
+}
+
+// ═══ FRIENDS DM CHAT ════════════════════════════════════════════════════════
+let _dmFriendId   = null;
+let _dmFriendName = '';
+let _dmPollTimer  = null;
+let _dmLastTs     = 0;   // unix float — tracks last seen message timestamp
+
+async function initDMChat(){
+  clearInterval(_dmPollTimer);
+  const listEl = document.getElementById('dmFriendList');
+  if(listEl) listEl.innerHTML = '<div style="padding:14px;color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace">Loading…</div>';
+
+  const [friends, unread] = await Promise.all([
+    fetch('/api/friends/list').then(r=>r.json()).catch(()=>[]),
+    fetch('/api/chat/inbox').then(r=>r.json()).catch(()=>({})),
+  ]);
+  if(!listEl) return;
+  if(!friends.length){
+    listEl.innerHTML='<div style="padding:14px;color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace">No friends yet.<br>Add friends from Social!</div>';
+    return;
+  }
+  listEl.innerHTML = friends.map(f=>{
+    const av = f.avatar_url
+      ? `<img src="${f.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`
+      : (f.display_name||'?')[0].toUpperCase();
+    const hasUnread = unread[f.user_id] > 0;
+    const isActive  = _dmFriendId === f.user_id;
+    return `<div class="dm-friend-item${isActive?' active':''}" data-fid="${f.user_id}" onclick="openDM('${f.user_id}','${(f.display_name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}',this)">
+      <div class="dm-friend-av">${av}</div>
+      <div class="dm-friend-name" style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.display_name}</div>
+      ${hasUnread?`<div class="dm-unread-dot"></div>`:''}
+    </div>`;
+  }).join('');
+
+  // Re-open previously selected conversation if any
+  if(_dmFriendId){
+    const item = listEl.querySelector(`[data-fid="${_dmFriendId}"]`);
+    if(item) item.classList.add('active');
+  }
+}
+
+async function openDM(friendId, friendName, clickedEl){
+  // Clear existing poll
+  clearInterval(_dmPollTimer);
+
+  _dmFriendId   = friendId;
+  _dmFriendName = friendName;
+  _dmLastTs     = 0;
+
+  // Update active state in friend list
+  document.querySelectorAll('.dm-friend-item').forEach(el => el.classList.remove('active'));
+  if(clickedEl) clickedEl.classList.add('active');
+  // Remove unread dot
+  const dot = clickedEl?.querySelector('.dm-unread-dot');
+  if(dot) dot.remove();
+
+  // Show header with friend name
+  const hdr = document.getElementById('dmHeader');
+  if(hdr) hdr.innerHTML = `
+    <div style="width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--bg);flex-shrink:0">${(friendName||'?')[0].toUpperCase()}</div>
+    <div style="font-weight:700;font-size:14px">${friendName}</div>`;
+
+  // Show messages area + input
+  const msgsEl   = document.getElementById('dmMessages');
+  const inputBar = document.getElementById('dmInputBar');
+  if(msgsEl)   { msgsEl.style.display='flex'; msgsEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace">Loading…</div>'; }
+  if(inputBar) { inputBar.style.display='flex'; document.getElementById('dmChatInput')?.focus(); }
+
+  // Load full history (no ?since param = all 100)
+  const msgs = await fetch('/api/chat/dm/'+friendId).then(r=>r.json()).catch(()=>[]);
+  if(!msgs.length){
+    if(msgsEl) msgsEl.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace">No messages yet. Say hi! 👋</div>';
+  } else {
+    if(msgsEl) renderChatMessages(msgsEl, msgs, '{{ user.id }}', true);
+    // Set _dmLastTs to the latest message timestamp
+    _dmLastTs = msgs.reduce((max, m) => Math.max(max, m.ts || 0), 0);
+  }
+
+  // Start polling for new messages every 3s using ?since=<timestamp>
+  _dmPollTimer = setInterval(() => pollDMMessages(friendId), 3000);
+}
+
+async function pollDMMessages(friendId){
+  // Stop if user switched to a different friend
+  if(_dmFriendId !== friendId){ clearInterval(_dmPollTimer); return; }
+  // Don't poll if page not active
+  if(!document.getElementById('page-dmchat')?.classList.contains('active')) return;
+
+  try{
+    const fresh = await fetch('/api/chat/dm/'+friendId+'?since='+_dmLastTs).then(r=>r.json()).catch(()=>[]);
+    if(!fresh.length) return;
+    // Update last timestamp
+    _dmLastTs = fresh.reduce((max, m) => Math.max(max, m.ts || 0), _dmLastTs);
+    const el = document.getElementById('dmMessages');
+    if(el) appendChatMessages(el, fresh, '{{ user.id }}');
+  }catch(e){}
+}
+
+async function sendDM(){
+  const inp  = document.getElementById('dmChatInput');
+  const text = inp?.value.trim();
+  if(!text || !_dmFriendId) return;
+  inp.value = '';
+
+  const d = await fetch('/api/chat/dm/'+_dmFriendId,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text})
+  }).then(r=>r.json()).catch(()=>({}));
+
+  if(d.message){
+    // Update timestamp so next poll doesn't re-show this message
+    _dmLastTs = Math.max(_dmLastTs, d.message.ts || 0);
+    const el = document.getElementById('dmMessages');
+    if(el) appendChatMessages(el, [d.message], '{{ user.id }}');
+  }
+}
+
+// ── Shared chat render helpers ──────────────────────────────────────────────
+function buildBubble(msg, myId){
+  const isMe = String(msg.user_id||msg.sender_id) === String(myId) || msg.is_me === true;
+  const avSrc = msg.avatar_url || msg.sender_av;
+  const av    = avSrc
+    ? `<img src="${avSrc}" style="width:100%;height:100%;object-fit:cover"/>`
+    : ((msg.display_name||msg.sender_name||'?')[0].toUpperCase());
+  const name  = msg.display_name || msg.sender_name || '';
+  const text  = (msg.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const ts    = msg.created_at || '';
+  return `<div class="chat-bubble ${isMe?'me':''}">
+    <div class="chat-av">${av}</div>
+    <div class="chat-content">
+      <div class="chat-name">${isMe?'You':name}${msg.username?' · @'+msg.username:''}</div>
+      <div class="chat-text">${text}</div>
+      <div class="chat-ts">${ts}</div>
+    </div>
+  </div>`;
+}
+
+function renderChatMessages(el, msgs, myId, scroll){
+  el.innerHTML = msgs.map(m=>buildBubble(m,myId)).join('');
+  if(scroll) setTimeout(()=>{ el.scrollTop = el.scrollHeight; }, 50);
+}
+
+function appendChatMessages(el, msgs, myId){
+  const atBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
+  // Remove "no messages" placeholder if present
+  const placeholder = el.querySelector('[data-placeholder]');
+  if(placeholder) placeholder.remove();
+  msgs.forEach(m => el.insertAdjacentHTML('beforeend', buildBubble(m, myId)));
+  if(atBottom) el.scrollTop = el.scrollHeight;
+}
+
+// Stop/resume polling on tab visibility change
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    clearInterval(_gcPollTimer);
+    clearInterval(_dmPollTimer);
+  } else {
+    if(document.getElementById('page-globalchat')?.classList.contains('active')) initGlobalChat();
+    if(document.getElementById('page-dmchat')?.classList.contains('active') && _dmFriendId){
+      // Resume poll without full reload
+      clearInterval(_dmPollTimer);
+      _dmPollTimer = setInterval(() => pollDMMessages(_dmFriendId), 3000);
+    }
+  }
+});
+
+// ═══ CHALLENGE INVITE SYSTEM ═══════════════════════════════════════════════
+let _currentInviteChallengeId = null;
+let _inviteFriends = [];
+let _inviteTab = 'friends';
+let _globalSearchTimer = null;
+
+function setInviteTab(tab){
+  _inviteTab = tab;
+  const isFriends = tab === 'friends';
+  document.getElementById('invPanelFriends').style.display = isFriends ? '' : 'none';
+  document.getElementById('invPanelSearch').style.display  = isFriends ? 'none' : '';
+  document.getElementById('invTabFriends').style.background = isFriends ? 'var(--lime)' : 'var(--surface2)';
+  document.getElementById('invTabFriends').style.color      = isFriends ? 'var(--bg)'  : 'var(--text2)';
+  document.getElementById('invTabFriends').style.border     = isFriends ? 'none'       : '1px solid var(--border2)';
+  document.getElementById('invTabSearch').style.background  = isFriends ? 'var(--surface2)' : 'var(--lime)';
+  document.getElementById('invTabSearch').style.color       = isFriends ? 'var(--text2)'    : 'var(--bg)';
+  document.getElementById('invTabSearch').style.border      = isFriends ? '1px solid var(--border2)' : 'none';
+}
+
+async function openInviteModal(challengeId){
+  _currentInviteChallengeId = challengeId;
+  document.getElementById('inviteIdentifier').value = '';
+  document.getElementById('inviteResult').textContent = '';
+  document.getElementById('inviteGlobalSearch').value = '';
+  document.getElementById('inviteGlobalList').innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace;padding:8px 0">Type to search users…</div>';
+  setInviteTab('friends');
+  document.getElementById('inviteOverlay').classList.add('open');
+  _inviteFriends = await fetch('/api/friends/list').then(r=>r.json()).catch(()=>[]);
+  renderInviteFriends('');
+  loadChallengeInvites(challengeId);
+}
+
+function renderInviteFriends(query){
+  const el = document.getElementById('inviteFriendsList');
+  if(!el) return;
+  const filtered = query
+    ? _inviteFriends.filter(f=>
+        f.display_name.toLowerCase().includes(query.toLowerCase()) ||
+        f.username.toLowerCase().includes(query.toLowerCase()))
+    : _inviteFriends;
+  if(!filtered.length){
+    el.innerHTML=`<div style="padding:10px 0;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px">${query?'No match':'No friends yet — add friends from Social!'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(f=>_userInviteRow(f)).join('');
+}
+
+function _userInviteRow(f){
+  const av = f.avatar_url?`<img src="${f.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`:(f.display_name||'?')[0].toUpperCase();
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:10px;margin-bottom:6px">
+    <div style="width:30px;height:30px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:var(--bg);overflow:hidden;flex-shrink:0">${av}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${f.display_name}</div><div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">@${f.username||'–'}</div></div>
+    <button onclick="quickInvite('${(f.username||f.email||'').replace(/'/g,"\\'")}')" style="padding:4px 12px;background:var(--lime-dim);border:1px solid rgba(200,255,0,.2);border-radius:8px;color:var(--lime);font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;white-space:nowrap">Invite</button>
+  </div>`;
+}
+
+async function searchGlobalUsers(query){
+  clearTimeout(_globalSearchTimer);
+  if(query.length < 2){
+    document.getElementById('inviteGlobalList').innerHTML='<div style="color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace;padding:8px 0">Type at least 2 characters…</div>';
+    return;
+  }
+  _globalSearchTimer = setTimeout(async()=>{
+    const el = document.getElementById('inviteGlobalList');
+    el.innerHTML='<div style="color:var(--muted);font-size:10px;font-family:\'DM Mono\',monospace;padding:6px 0">Searching…</div>';
+    const results = await fetch(`/api/challenges/search-users?q=${encodeURIComponent(query)}`).then(r=>r.json()).catch(()=>[]);
+    if(!results.length){
+      el.innerHTML='<div style="color:var(--muted);font-size:11px;font-family:\'DM Mono\',monospace;padding:8px 0">No users found</div>';
+      return;
+    }
+    el.innerHTML = results.map(f=>_userInviteRow(f)).join('');
+  }, 350);
+}
+
+async function quickInvite(username){
+  document.getElementById('inviteIdentifier').value = username;
+  await sendInvite();
+}
+
+async function loadChallengeInvites(id){
+  const list = document.getElementById('inviteList');
+  if(!list) return;
+  try{
+    const data = await fetch('/api/challenges/'+id+'/invites').then(r=>r.json());
+    if(!data.length){ list.innerHTML='<div style="color:var(--muted);font-size:11px">No invites sent yet</div>'; return; }
+    const sc = {pending:'#fbbf24', accepted:'#34d399', declined:'#f87171'};
+    list.innerHTML = data.map(i=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:9px">
+        <span style="font-size:12px;font-weight:600;flex:1">${i.user}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:99px;background:${sc[i.status]||'var(--muted)'}22;border:1px solid ${sc[i.status]||'var(--muted)'}44;color:${sc[i.status]||'var(--muted)'}">${i.status}</span>
+      </div>`).join('');
+  }catch(e){ list.innerHTML=''; }
+}
+
+async function sendInvite(){
+  const identifier = document.getElementById('inviteIdentifier').value.trim();
+  const resultEl   = document.getElementById('inviteResult');
+  if(!identifier){ resultEl.style.color='#f87171'; resultEl.textContent='Enter a username or email'; return; }
+  resultEl.style.color='var(--muted)'; resultEl.textContent='Sending…';
+  try{
+    const d = await fetch('/api/challenges/'+_currentInviteChallengeId+'/invite',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({identifier})
+    }).then(r=>r.json());
+    if(d.error){ resultEl.style.color='#f87171'; resultEl.textContent='✗ '+d.error; return; }
+    resultEl.style.color='#34d399'; resultEl.textContent='✓ Invite sent to '+d.invited+'!';
+    document.getElementById('inviteIdentifier').value='';
+    loadChallengeInvites(_currentInviteChallengeId);
+  }catch(e){ resultEl.style.color='#f87171'; resultEl.textContent='Something went wrong'; }
+}
+
+async function checkPendingInvites(){
+  try{
+    const data = await fetch('/api/challenges/my-invites').then(r=>r.json());
+    if(!data.length) return;
+    // Show badge on challenges nav
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      if(n.textContent.includes('Challenges') && !n.querySelector('.invite-badge')){
+        const b = document.createElement('span');
+        b.className='invite-badge';
+        b.textContent=data.length;
+        n.appendChild(b);
+      }
+    });
+    // Populate pending invites modal
+    const list = document.getElementById('pendingInvitesList');
+    if(list){
+      list.innerHTML = data.map(inv=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:22px">${inv.challenge_icon}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700">${inv.challenge_title}</div>
+              <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">from ${inv.invited_by}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="respondInvite(${inv.challenge_id},'accept',this)" style="flex:1;padding:8px;background:var(--lime);border:none;border-radius:8px;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer">✓ Join</button>
+            <button onclick="respondInvite(${inv.challenge_id},'decline',this)" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">✗ Decline</button>
+          </div>
+        </div>`).join('');
+      document.getElementById('pendingInvitesOverlay').classList.add('open');
+    }
+  }catch(e){}
+}
+
+async function respondInvite(challengeId, action, btn){
+  const endpoint = action==='accept'
+    ? '/api/challenges/'+challengeId+'/join'
+    : '/api/challenges/'+challengeId+'/decline';
+  await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const card = btn.closest('div[style*="background:var(--surface2)"]');
+  if(card) card.innerHTML=`<div style="text-align:center;padding:8px;font-size:12px;color:${action==='accept'?'#34d399':'var(--muted)'}">${action==='accept'?'✓ Joined!':'Declined'}</div>`;
+  if(action==='accept'){ showToast('⚔️ Joined the challenge!','#c8ff00'); loadChallenges(); }
+}
+
+// ═══ CHALLENGES — patched with invite button ════════════════════════════════
+async function loadChallenges(){
+  const el=document.getElementById('challengesContent');if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:36px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px"><div class="spin"></div>Loading…</div>';
+  const challenges=await fetch('/api/challenges').then(r=>r.json()).catch(()=>[]);
+  if(!challenges.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-family:\'DM Mono\',monospace"><div style="font-size:36px;margin-bottom:10px">⚔️</div>No challenges yet — create the first one!</div>';return;}
+  // Get current user id
+  const myId = '{{ user.id }}';
+  el.innerHTML=challenges.map(ch=>{
+    const sc={active:'status-active',expired:'status-expired',complete:'status-complete'}[ch.status]||'status-active';
+    const partsHTML=ch.participants.slice(0,5).map((p,i)=>{
+      const av=p.avatar_url?`<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`:(p.display_name||'?')[0].toUpperCase();
+      return`<div class="ch-part ${i===0&&ch.participants.length>1?'leader':''}"><div class="ch-part-av">${av}</div><span style="font-size:12px;font-weight:${p.is_me?700:400}">${p.display_name.split(' ')[0]}</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--lime)">${p.logs}/${ch.duration_days}</span></div>`;
+    }).join('');
+    const actionBtn=ch.im_in
+      ?(ch.status==='active'?`<button onclick="logChallenge(${ch.id})" style="padding:8px 18px;background:var(--lime);border:none;border-radius:9px;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation">✓ Log Today</button>`:'<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted)">Ended</span>')
+      :`<button onclick="joinChallenge(${ch.id})" style="padding:8px 18px;background:var(--lime-dim);border:1px solid rgba(200,255,0,.2);border-radius:9px;color:var(--lime);font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation">+ Join</button>`;
+    const inviteBtn=ch.im_in?`<button onclick="openInviteModal(${ch.id})" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;touch-action:manipulation">📨 Invite</button>`:'';
+    const isCreator = String(ch.creator_id) === String(myId);
+    const deleteBtn = isCreator ? `<button onclick="deleteChallenge(${ch.id})" style="padding:8px 12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:9px;color:#f87171;font-size:11px;font-weight:500;cursor:pointer;touch-action:manipulation">🗑️ Delete</button>` : '';
+    return`<div class="ch-card"><div class="ch-header"><div class="ch-ico">${ch.habit_icon}</div><div style="flex:1"><div class="ch-title">${ch.title}</div><div class="ch-meta">${ch.habit_name} · ${ch.duration_days} days · ${ch.days_left}d left · ${ch.participant_count} joined</div></div><span class="status-pill ${sc}">${ch.status}</span></div>${ch.description?`<div style="color:var(--text2);font-size:12px;margin-bottom:12px">${ch.description}</div>`:''}<div class="ch-participants">${partsHTML}</div><div class="ch-actions" style="gap:8px;display:flex;flex-wrap:wrap">${actionBtn}${inviteBtn}${deleteBtn}</div></div>`;
+  }).join('');
+}
+
+// ═══ PROFILE & SECURITY PAGE ═══════════════════════════════════════════════
+async function loadProfilePage(){
+  const el = document.getElementById('profileContent');
+  if(!el) return;
+  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:40px;color:var(--muted);font-family:\'DM Mono\',monospace;font-size:11px"><div class="spin"></div>Loading…</div>';
+  const info = await fetch('/auth/api/account-info').then(r=>r.json()).catch(()=>null);
+  if(!info){ el.innerHTML='<div style="padding:40px;color:var(--muted)">Could not load account info.</div>'; return; }
+
+  const hasPass  = info.has_password;
+  const hasGoogle= info.has_google;
+
+  el.innerHTML=`
+    <!-- Account Info Card -->
+    <div class="sec-card">
+      <div class="sec-title">👤 Account</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--bg);flex-shrink:0">${(info.display_name||'?')[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${info.display_name}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${info.email}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${hasGoogle?'<span class="sec-badge set">🔗 Google Connected</span>':''}
+        <span class="sec-badge ${hasPass?'set':'notset'}">${hasPass?'🔒 Password Set':'⚠️ No Password'}</span>
+      </div>
+      ${!hasPass&&hasGoogle?'<div style="margin-top:12px;padding:10px 14px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:9px;font-size:12px;color:#f97316">You signed up with Google. Set a password below so you can also log in with your email.</div>':''}
+    </div>
+
+    <!-- Password Card -->
+    <div class="sec-card">
+      <div class="sec-title">${hasPass?'🔑 Change Password':'🔑 Set a Password'}<span class="sec-badge ${hasPass?'set':'notset'}">${hasPass?'Set':'Not set'}</span></div>
+
+      ${hasPass?`
+      <div class="fgroup" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">Current Password</label>
+        <input type="password" id="secCurrent" placeholder="Your current password"
+          style="width:100%;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box"/>
+      </div>`:''}
+
+      <div class="fgroup" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">New Password</label>
+        <input type="password" id="secNew" placeholder="At least 8 characters"
+          style="width:100%;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box"/>
+      </div>
+      <div class="fgroup" style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">Confirm New Password</label>
+        <input type="password" id="secConfirm" placeholder="Repeat new password"
+          style="width:100%;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;box-sizing:border-box"/>
+      </div>
+      <div id="secMsg" style="font-family:'DM Mono',monospace;font-size:11px;min-height:16px;margin-bottom:12px"></div>
+      <button onclick="savePassword(${hasPass})"
+        style="padding:11px 24px;background:var(--lime);border:none;border-radius:10px;color:var(--bg);font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;touch-action:manipulation;-webkit-tap-highlight-color:transparent">
+        ${hasPass?'Update Password':'Set Password'}
+      </button>
+    </div>
+
+    <!-- Forgot / Reset by Email Card -->
+    <div class="sec-card" style="grid-column:1/-1">
+      <div class="sec-title">📧 Forgot Your Password?</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+        Send a one-time temporary password to <strong>${info.email}</strong>. Use it to log in, then set a permanent password above.
+      </p>
+      <div id="forgotSecMsg" style="font-family:'DM Mono',monospace;font-size:11px;min-height:16px;margin-bottom:10px"></div>
+      <button onclick="sendForgotFromProfile('${info.email}')"
+        style="padding:10px 22px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;touch-action:manipulation;-webkit-tap-highlight-color:transparent">
+        📨 Send Temporary Password to My Email
+      </button>
+    </div>
+  `;
+}
+
+async function sendForgotFromProfile(email){
+  const msgEl = document.getElementById('forgotSecMsg');
+  const btn   = event?.currentTarget;
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  if(msgEl){ msgEl.style.color='var(--muted)'; msgEl.textContent='Sending email…'; }
+  try{
+    const resp = await fetch('/auth/api/forgot',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email})
+    });
+    const d = await resp.json();
+    if(!resp.ok || d.error){
+      const errMsg = d.error || 'Could not send email.';
+      if(msgEl){ msgEl.style.color='#f87171'; msgEl.textContent='❌ ' + errMsg; }
+      showToast('❌ ' + errMsg, '#f87171');
+    } else {
+      if(msgEl){ msgEl.style.color='#34d399'; msgEl.textContent='✓ Temporary password sent to ' + email + '! Check your inbox (and spam folder).'; }
+      showToast('📨 Check your inbox!','#c8ff00');
+    }
+  }catch(e){
+    if(msgEl){ msgEl.style.color='#f87171'; msgEl.textContent='Network error: ' + e.message; }
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='📨 Send Temporary Password to My Email'; }
+  }
+}
+
+async function savePassword(requiresCurrent){
+  const newPwd   = document.getElementById('secNew')?.value||'';
+  const confirm  = document.getElementById('secConfirm')?.value||'';
+  const currEl   = document.getElementById('secCurrent');
+  const msgEl    = document.getElementById('secMsg');
+  if(newPwd.length<8){ msgEl.style.color='#f87171'; msgEl.textContent='Password must be at least 8 characters'; return; }
+  if(newPwd!==confirm){ msgEl.style.color='#f87171'; msgEl.textContent='Passwords do not match'; return; }
+  const body={new_password:newPwd};
+  if(requiresCurrent&&currEl) body.current_password=currEl.value;
+  msgEl.style.color='var(--muted)'; msgEl.textContent='Saving…';
+  try{
+    const d=await fetch('/auth/api/add-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(d.error){ msgEl.style.color='#f87171'; msgEl.textContent='✗ '+d.error; return; }
+    msgEl.style.color='#34d399'; msgEl.textContent='✓ Password saved successfully!';
+    showToast('🔒 Password updated!','#c8ff00');
+    setTimeout(()=>loadProfilePage(), 1200);
+  }catch(e){ msgEl.style.color='#f87171'; msgEl.textContent='Something went wrong'; }
+}
+
+</script>
+
+<!-- Create Challenge Modal -->
+<div class="overlay" id="challengeOverlay">
+  <div class="modal-box">
+    <h3>⚔️ New Challenge</h3>
+    <div class="fgroup"><label>Title</label><input type="text" id="chTitle" placeholder="e.g. 30-Day Morning Run"/></div>
+    <div class="fgroup"><label>Habit Name</label><input type="text" id="chHabit" placeholder="e.g. Morning Run"/></div>
+    <div class="fgroup"><label>Habit Icon</label><input type="text" id="chIcon" placeholder="🏃" maxlength="4"/></div>
+    <div class="fgroup"><label>Description (optional)</label><input type="text" id="chDesc" placeholder="Challenge your friends!"/></div>
+    <div class="fgroup"><label>Duration</label>
+      <select id="chDuration">
+        <option value="7">7 days</option>
+        <option value="14">14 days</option>
+        <option value="21" selected>21 days</option>
+        <option value="30">30 days</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('challengeOverlay')">Cancel</button>
+      <button class="mbtn mbtn-p" onclick="saveChallenge()">Create & Join</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shareable Card Modal -->
+<div class="overlay" id="shareOverlay">
+  <div class="modal-box">
+    <h3>📸 Share Your Streak</h3>
+    <div class="share-preview" id="sharePreview"></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">Screenshot this to share on social media!</p>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('shareOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Habit Templates Modal -->
+<div class="overlay" id="templateOverlay">
+  <div class="modal-box" style="max-width:640px">
+    <h3>📚 Habit Templates</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="tmplCatFilter"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:360px;overflow-y:auto" id="tmplGrid"></div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('templateOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite to Challenge Modal -->
+<div class="overlay" id="inviteOverlay">
+  <div class="modal-box" style="max-width:520px">
+    <h3>📨 Invite to Challenge</h3>
+    <!-- Tab toggle -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button onclick="setInviteTab('friends')" id="invTabFriends" style="flex:1;padding:7px;border-radius:9px;background:var(--lime);border:none;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">👥 My Friends</button>
+      <button onclick="setInviteTab('search')" id="invTabSearch" style="flex:1;padding:7px;border-radius:9px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">🔍 Search All Users</button>
+    </div>
+    <!-- Friends tab -->
+    <div id="invPanelFriends">
+      <input type="text" id="inviteSearchInput" placeholder="Search friends…" oninput="renderInviteFriends(this.value)"
+        style="width:100%;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:9px 14px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif;margin-bottom:10px"/>
+      <div id="inviteFriendsList" style="max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
+    </div>
+    <!-- Search all users tab -->
+    <div id="invPanelSearch" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" id="inviteGlobalSearch" placeholder="Search by name or @username…"
+          oninput="searchGlobalUsers(this.value)"
+          style="flex:1;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:9px 14px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif"/>
+      </div>
+      <div id="inviteGlobalList" style="max-height:220px;overflow-y:auto;margin-bottom:10px">
+        <div style="color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;padding:8px 0">Type to search users…</div>
+      </div>
+    </div>
+    <!-- Manual entry -->
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Or enter @username / email directly</div>
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <input type="text" id="inviteIdentifier" placeholder="@username or email" style="flex:1;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);border-radius:9px;padding:9px 14px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif"/>
+      <button onclick="sendInvite()" style="padding:9px 18px;background:var(--lime);border:none;border-radius:9px;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation">Send</button>
+    </div>
+    <div id="inviteResult" style="font-family:'DM Mono',monospace;font-size:11px;min-height:16px;margin-bottom:10px"></div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Sent Invites</div>
+    <div id="inviteList" style="display:flex;flex-direction:column;gap:5px;max-height:110px;overflow-y:auto"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('inviteOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Invites notification modal -->
+<div class="overlay" id="pendingInvitesOverlay">
+  <div class="modal-box">
+    <h3>⚔️ Challenge Invites</h3>
+    <div id="pendingInvitesList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-s" onclick="closeOverlay('pendingInvitesOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

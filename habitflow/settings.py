@@ -1,0 +1,118 @@
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ── Security ────────────────────────────────────────────────────────────────
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-only-change-in-prod')
+DEBUG      = os.environ.get('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# ── Apps ────────────────────────────────────────────────────────────────────
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'accounts',
+    'habits',
+    'social',
+    'gamification',
+    'challenges',
+    'pages',
+]
+
+# ── Middleware ──────────────────────────────────────────────────────────────
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'habitflow.cors_middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'habitflow.token_middleware.TokenAuthMiddleware',
+]
+
+ROOT_URLCONF     = 'habitflow.urls'
+WSGI_APPLICATION = 'habitflow.wsgi.application'
+
+# ── Templates ───────────────────────────────────────────────────────────────
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+# ── Database ────────────────────────────────────────────────────────────────
+import dj_database_url
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+AUTH_USER_MODEL = 'accounts.User'
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
+
+# ── Sessions ─────────────────────────────────────────────────────────────────
+SESSION_ENGINE       = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE   = 60 * 60 * 24 * 30
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE   = not DEBUG    # HTTPS only in production
+
+# ── Static files ─────────────────────────────────────────────────────────────
+STATIC_URL  = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATICFILES_DIRS = []
+
+# ── Email (Resend HTTP API) ───────────────────────────────────────────────────
+# Uses Resend HTTP API directly via urllib — no extra packages needed
+# ── Email (Gmail SMTP) ────────────────────────────────────────────────────────
+EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST          = 'smtp.gmail.com'
+EMAIL_PORT          = 587
+EMAIL_USE_TLS       = True
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', 'habitfloww@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL  = f'HabitFlows <{EMAIL_HOST_USER}>'
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '65650647695-dsoilitqu0p95t7ago0t7ijq5vtc07s2.apps.googleusercontent.com')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+
+# ── Admin branding ────────────────────────────────────────────────────────────
+ADMIN_SITE_HEADER  = 'HabitFlows Admin'
+ADMIN_SITE_TITLE   = 'HabitFlows'
+ADMIN_INDEX_TITLE  = 'Dashboard'
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:54321",
+    "http://127.0.0.1:54321",
+]
+CORS_ALLOW_ALL_ORIGINS = True # Allow all for development with dynamic Ngrok URLs
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:54321", 
+    "http://127.0.0.1:54321",
+    "https://*.ngrok-free.app", # Allows Ngrok public URLs
+    "https://*.loca.lt"         # Allows Localtunnel public URLs
+]
